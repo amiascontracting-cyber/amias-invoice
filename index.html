@@ -3,37 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>فاتورة أمياس للمقاولات - النظام السحابي الموحد</title>
+    <title>فاتورة أمياس للمقاولات - النظام السحابي</title>
     
-    <!-- تحميل مكتبة Tailwind للتصميم الحديث والسريع -->
+    <!-- تحميل مكتبة Tailwind للتصميم -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- تحميل مكتبات React لتعمل مباشرة من المتصفح بكفاءة كاملة -->
+    <!-- تحميل مكتبات React -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- خطوط عربية وإنجليزي متناسقة واحترافية للطباعة -->
+    <!-- الخطوط العربية والإنجليزية -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
     
-    <!-- تحميل حزمة قاعدة بيانات جوجل السحابية (Firebase) بمواصفات أمان وخصوصية صارمة -->
+    <!-- 1️⃣ تحميل حزم جوجل السحابية كـ Module منفصل تماماً ومحمي لتفادي أخطاء Babel -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // تصدير حزم الـ SDK للـ Window لتسهيل قراءتها داخل تطبيق React بأمان
+        // تخزين الحزم في مساحة الويندوز لتتمكن React من قراءتها بأمان
         window.FirebaseSDK = {
             initializeApp, getAuth, signInAnonymously, onAuthStateChanged,
-            getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot
+            getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, addDoc
         };
+
+        // إطلاق إشارة خضراء بأن السيرفر جاهز للعمل لتفادي الشاشة البيضاء
+        window.dispatchEvent(new Event('FirebaseLoaded'));
     </script>
 
     <style>
         body { font-family: 'Cairo', sans-serif; }
         .font-cursive { font-family: 'Dancing Script', cursive; }
         
-        /* إعدادات متقدمة وخاصة لطباعة ورقة الـ A4 بشكل متكامل بالملي */
         @media print {
             @page { margin: 0; size: A4 portrait; }
             body, html { 
@@ -44,491 +46,490 @@
                 padding: 0 !important;
             }
             .print-hidden { display: none !important; }
-            
             #root, #root > div {
-                display: block !important; 
-                height: auto !important;
-                min-height: auto !important;
-                overflow: visible !important;
+                display: block !important; height: auto !important;
+                min-height: auto !important; overflow: visible !important;
             }
         }
     </style>
 </head>
 <body class="bg-gray-50 print:bg-white text-gray-800">
-    <div id="root"></div>
+    <div id="root">
+        <!-- شاشة تحميل مؤقتة تظهر لتفادي الشاشة البيضاء لحين جاهزية النظام -->
+        <div class="min-h-screen flex flex-col items-center justify-center bg-slate-900">
+            <div class="w-16 h-16 border-4 border-[#2d206b] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <h2 class="text-white font-bold text-xl font-['Cairo']">جاري تشغيل المنظومة السحابية...</h2>
+        </div>
+    </div>
 
+    <!-- 2️⃣ كود React المنفصل تماماً، والذي لا يعمل إلا بعد إشارة السيرفر -->
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        // دالة تشغيل النظام بأكمله
+        const bootApplication = () => {
+            const { useState, useEffect } = React;
 
-        // الأيقونات التفاعلية للوحة التحكم ومحرر الفواتير
-        const IconPrinter = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>;
-        const IconPlus = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-        const IconTrash = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
-        const IconPhone = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>;
-        const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>;
-        const IconMail = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>;
-        const IconLogout = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>;
-        const IconBack = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>;
-        const IconSave = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>;
+            // الأيقونات
+            const IconPrinter = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>;
+            const IconPlus = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+            const IconTrash = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
+            const IconPhone = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>;
+            const IconHash = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>;
+            const IconMail = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>;
+            const IconLogout = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>;
+            const IconBack = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>;
+            const IconSave = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>;
 
-        // شعار شركة أمياس المعتمد والمطابق لصورتك بالملي
-        const AmiasLogo = ({ className = "w-32 h-auto" }) => (
-            <svg viewBox="0 0 320 220" className={className} xmlns="http://www.w3.org/2000/svg">
-                <g fill="#4b3b94">
-                    <path d="M 30 155 L 110 139 L 110 147 L 30 163 Z" />
-                    <path d="M 30 135 L 110 119 L 110 127 L 30 143 Z" />
-                    <path d="M 30 115 L 110 99 L 110 107 L 30 123 Z" />
-                    <path d="M 30 95 L 110 79 L 110 87 L 30 103 Z" />
-                    <path d="M 125 145 L 205 129 L 205 137 L 125 153 Z" fill="#2d206b" />
-                    <path d="M 125 125 L 205 109 L 205 117 L 125 133 Z" fill="#2d206b" />
-                    <path d="M 125 105 L 205 89 L 205 97 L 125 113 Z" fill="#2d206b" />
-                    <path d="M 125 85 L 205 69 L 205 77 L 125 93 Z" fill="#2d206b" />
-                    <path d="M 125 65 L 205 49 L 205 57 L 125 73 Z" fill="#2d206b" />
-                    <path d="M 220 155 L 300 139 L 300 147 L 220 163 Z" />
-                    <path d="M 220 135 L 300 119 L 300 127 L 220 143 Z" />
-                    <path d="M 220 115 L 300 99 L 300 107 L 220 123 Z" />
-                    <path d="M 220 95 L 300 79 L 300 87 L 220 103 Z" />
-                </g>
-                <text x="165" y="195" font-family="Arial, sans-serif" font-weight="900" font-style="italic" fill="#2d206b" font-size="22" text-anchor="middle" letter-spacing="1">AMIAS CONTRACTING</text>
-            </svg>
-        );
-
-        // ختم شركة أمياس المعتمد والمطابق للصورة بالملي مع السجل التجاري
-        const AmiasStamp = ({ className = "w-32 h-32" }) => (
-            <svg viewBox="0 0 200 200" className={className} xmlns="http://www.w3.org/2000/svg">
-                <circle cx="100" cy="100" r="95" fill="none" stroke="#2d206b" strokeWidth="2" />
-                <circle cx="100" cy="100" r="87" fill="none" stroke="#2d206b" strokeWidth="4" />
-                <circle cx="100" cy="100" r="62" fill="none" stroke="#2d206b" strokeDasharray="4,3" strokeWidth="1.5" />
-                <path id="stamp-path-top" d="M 22,100 A 78,78 0 1,1 178,100" fill="none" />
-                <path id="stamp-path-bottom" d="M 25,100 A 75,75 0 0,0 175,100" fill="none" />
-                <text>
-                    <textPath href="#stamp-path-top" startOffset="50%" textAnchor="middle" fill="#2d206b" fontSize="15" fontWeight="bold">أمياس للمقاولات</textPath>
-                </text>
-                <text>
-                    <textPath href="#stamp-path-bottom" startOffset="50%" textAnchor="middle" fill="#2d206b" fontSize="12" fontWeight="bold" letterSpacing="1">AMIAS CONTRACTING</textPath>
-                </text>
-                <g fill="#2d206b" transform="translate(68, 75) scale(0.2)">
-                    <path d="M 30 155 L 110 139 L 110 147 L 30 163 Z" />
-                    <path d="M 30 135 L 110 119 L 110 127 L 30 143 Z" />
-                    <path d="M 30 115 L 110 99 L 110 107 L 30 123 Z" />
-                    <path d="M 125 145 L 205 129 L 205 137 L 125 153 Z" />
-                    <path d="M 125 125 L 205 109 L 205 117 L 125 133 Z" />
-                    <path d="M 125 105 L 205 89 L 205 97 L 125 113 Z" />
-                    <path d="M 220 155 L 300 139 L 300 147 L 220 163 Z" />
-                    <path d="M 220 135 L 300 119 L 300 127 L 220 143 Z" />
-                    <path d="M 220 115 L 300 99 L 300 107 L 220 123 Z" />
-                </g>
-                <text x="100" y="145" fill="#2d206b" fontSize="10" fontWeight="bold" textAnchor="middle">س/ت : 159162</text>
-            </svg>
-        );
-
-        // مكون توليد الباركود (QR) التفاعلي والذكي لبث روابط السوشيال ميديا الحقيقية للشركة
-        const SmartQRCode = ({ dataUrl, label }) => {
-            const encodedUrl = encodeURIComponent(dataUrl);
-            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodedUrl}`;
-            return (
-                <div className="flex flex-col items-center">
-                    <img 
-                        src={qrApiUrl} 
-                        alt={label} 
-                        className="w-16 h-16 object-contain bg-white p-0.5 border border-gray-300 rounded-md shadow-sm" 
-                    />
-                    <span className="text-[10px] font-bold text-[#2d206b] mt-1 tracking-wider uppercase">{label}</span>
-                </div>
+            // الشعار
+            const AmiasLogo = ({ className = "w-32 h-auto" }) => (
+                <svg viewBox="0 0 320 220" className={className} xmlns="http://www.w3.org/2000/svg">
+                    <g fill="#4b3b94">
+                        <path d="M 30 155 L 110 139 L 110 147 L 30 163 Z" />
+                        <path d="M 30 135 L 110 119 L 110 127 L 30 143 Z" />
+                        <path d="M 30 115 L 110 99 L 110 107 L 30 123 Z" />
+                        <path d="M 30 95 L 110 79 L 110 87 L 30 103 Z" />
+                        <path d="M 125 145 L 205 129 L 205 137 L 125 153 Z" fill="#2d206b" />
+                        <path d="M 125 125 L 205 109 L 205 117 L 125 133 Z" fill="#2d206b" />
+                        <path d="M 125 105 L 205 89 L 205 97 L 125 113 Z" fill="#2d206b" />
+                        <path d="M 125 85 L 205 69 L 205 77 L 125 93 Z" fill="#2d206b" />
+                        <path d="M 125 65 L 205 49 L 205 57 L 125 73 Z" fill="#2d206b" />
+                        <path d="M 220 155 L 300 139 L 300 147 L 220 163 Z" />
+                        <path d="M 220 135 L 300 119 L 300 127 L 220 143 Z" />
+                        <path d="M 220 115 L 300 99 L 300 107 L 220 123 Z" />
+                        <path d="M 220 95 L 300 79 L 300 87 L 220 103 Z" />
+                    </g>
+                    <text x="165" y="195" font-family="Arial, sans-serif" font-weight="900" font-style="italic" fill="#2d206b" font-size="22" text-anchor="middle" letter-spacing="1">AMIAS CONTRACTING</text>
+                </svg>
             );
-        };
 
-        // ⚙️ استدعاء وضبط مفاتيح الاتصال السحابي الحصرية لشركة أمياس من جوجل
-        const firebaseConfig = {
-            apiKey: "AIzaSyAcEQy75s7qUAG07GvLXdmmvBwbyCNASww",
-            authDomain: "amias-invoice.firebaseapp.com",
-            projectId: "amias-invoice",
-            storageBucket: "amias-invoice.firebasestorage.app",
-            messagingSenderId: "521382676875",
-            appId: "1:521382676875:web:735c995856fdd17274c78e"
-        };
+            // الختم
+            const AmiasStamp = ({ className = "w-32 h-32" }) => (
+                <svg viewBox="0 0 200 200" className={className} xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="100" cy="100" r="95" fill="none" stroke="#2d206b" strokeWidth="2" />
+                    <circle cx="100" cy="100" r="87" fill="none" stroke="#2d206b" strokeWidth="4" />
+                    <circle cx="100" cy="100" r="62" fill="none" stroke="#2d206b" strokeDasharray="4,3" strokeWidth="1.5" />
+                    <path id="stamp-path-top" d="M 22,100 A 78,78 0 1,1 178,100" fill="none" />
+                    <path id="stamp-path-bottom" d="M 25,100 A 75,75 0 0,0 175,100" fill="none" />
+                    <text><textPath href="#stamp-path-top" startOffset="50%" textAnchor="middle" fill="#2d206b" fontSize="15" fontWeight="bold">أمياس للمقاولات</textPath></text>
+                    <text><textPath href="#stamp-path-bottom" startOffset="50%" textAnchor="middle" fill="#2d206b" fontSize="12" fontWeight="bold" letterSpacing="1">AMIAS CONTRACTING</textPath></text>
+                    <g fill="#2d206b" transform="translate(68, 75) scale(0.2)">
+                        <path d="M 30 155 L 110 139 L 110 147 L 30 163 Z" />
+                        <path d="M 30 135 L 110 119 L 110 127 L 30 143 Z" />
+                        <path d="M 30 115 L 110 99 L 110 107 L 30 123 Z" />
+                        <path d="M 125 145 L 205 129 L 205 137 L 125 153 Z" />
+                        <path d="M 125 125 L 205 109 L 205 117 L 125 133 Z" />
+                        <path d="M 125 105 L 205 89 L 205 97 L 125 113 Z" />
+                        <path d="M 220 155 L 300 139 L 300 147 L 220 163 Z" />
+                        <path d="M 220 135 L 300 119 L 300 127 L 220 143 Z" />
+                        <path d="M 220 115 L 300 99 L 300 107 L 220 123 Z" />
+                    </g>
+                    <text x="100" y="145" fill="#2d206b" fontSize="10" fontWeight="bold" textAnchor="middle">س/ت : 159162</text>
+                </svg>
+            );
 
-        const app = window.FirebaseSDK.initializeApp(firebaseConfig);
-        const auth = window.FirebaseSDK.getAuth(app);
-        const db = window.FirebaseSDK.getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'amias-invoice-app';
-
-        // 🔑 جدول الحسابات وكلمات السر لليوزرات المعتمدة والمنظمة
-        const USERS_CREDENTIALS = {
-            "Yassin shrif": { pass: "amias2026", isAdmin: true }, // حساب المدير العام
-            "المبيعات 1": { pass: "sales1", isAdmin: false },      // حساب الموظف 1
-            "المبيعات 2": { pass: "sales2", isAdmin: false }       // حساب الموظف 2
-        };
-
-        function App() {
-            // إدارة الحالات (States)
-            const [localUser, setLocalUser] = useState(() => {
-                const saved = sessionStorage.getItem('amias_user');
-                return saved ? JSON.parse(saved) : null;
-            });
-
-            const [loginData, setLoginData] = useState({ username: 'Yassin shrif', password: '' });
-            const [loginError, setLoginError] = useState('');
-            const [view, setView] = useState(localUser ? 'dashboard' : 'login');
-            const [activeInvoice, setActiveInvoice] = useState(null);
-            const [searchQuery, setSearchQuery] = useState('');
-            const [dbInvoices, setDbInvoices] = useState([]);
-            const [user, setUser] = useState(null);
-            const [modal, setModal] = useState({ show: false, title: '', message: '', type: 'success' });
-            const [deleteTarget, setDeleteTarget] = useState(null);
-            const [isSaving, setIsSaving] = useState(false);
-
-            // تفعيل الاتصال السحابي الآمن الفوري - قاعدة رقم 3
-            useEffect(() => {
-                const initAuth = async () => {
-                    try {
-                        await window.FirebaseSDK.signInAnonymously(auth);
-                    } catch (err) {
-                        console.error("خطأ الاتصال السحابي بجوجل:", err);
-                    }
-                };
-                initAuth();
-                const unsubscribe = window.FirebaseSDK.onAuthStateChanged(auth, setUser);
-                return () => unsubscribe();
-            }, []);
-
-            // مزامنة الفواتير لحظياً من السيرفر باتباع المسارات الصارمة والآمنة - قواعد رقم 1 ورقم 2
-            useEffect(() => {
-                if (!user) return;
-                
-                // مسار تأمين قواعد البيانات والخصوصية الصارم لشركة أمياس
-                const invoicesRef = window.FirebaseSDK.collection(db, 'artifacts', appId, 'public', 'data', 'invoices');
-                
-                // تفعيل المراقبة اللحظية بدون تعقيد الكويريز (تصفية وترتيب بالذاكرة لتجنب مشاكل الفهرسة)
-                const unsubscribe = window.FirebaseSDK.onSnapshot(invoicesRef, (snapshot) => {
-                    const list = [];
-                    snapshot.forEach((doc) => {
-                        list.push({ id: doc.id, ...doc.data() });
-                    });
-                    // الترتيب من الأحدث للأقدم
-                    list.sort((a, b) => b.createdAt - a.createdAt);
-                    setDbInvoices(list);
-                }, (error) => {
-                    console.error("خطأ المزامنة اللحظية السحابية:", error);
-                });
-
-                return () => unsubscribe();
-            }, [user]);
-
-            const showMessage = (title, message, type = 'success') => {
-                setModal({ show: true, title, message, type });
-            };
-
-            const handleLogin = (e) => {
-                e.preventDefault();
-                setLoginError('');
-                const creds = USERS_CREDENTIALS[loginData.username];
-                if (creds && creds.pass === loginData.password) {
-                    const sessionData = { name: loginData.username, isAdmin: creds.isAdmin };
-                    setLocalUser(sessionData);
-                    sessionStorage.setItem('amias_user', JSON.stringify(sessionData));
-                    setView('dashboard');
-                } else {
-                    setLoginError('اسم المستخدم أو كلمة المرور غير صحيحة!');
-                }
-            };
-
-            const handleLogout = () => {
-                sessionStorage.removeItem('amias_user');
-                setLocalUser(null);
-                setLoginData({ username: 'Yassin shrif', password: '' });
-                setView('login');
-            };
-
-            const handleCreateNewInvoice = () => {
-                setActiveInvoice({
-                    date: new Date().toLocaleDateString('en-GB'),
-                    invoiceNumber: String(dbInvoices.length + 1).padStart(3, '0'),
-                    clientName: '',
-                    projectName: '',
-                    currency: 'جنيه سوداني',
-                    notes: '10 سنوات ضمان للألواح وسنة للنظام.\nالمتابعة ما بعد التركيب.',
-                    discountPercent: 0,
-                    items: [
-                        { id: 1, description: '', qty: 0, price: 0 },
-                        { id: 2, description: '', qty: 0, price: 0 },
-                        { id: 3, description: '', qty: 0, price: 0 },
-                        { id: 4, description: '', qty: 0, price: 0 },
-                    ]
-                });
-                setView('editor');
-            };
-
-            const handleEditInvoice = (invoice) => {
-                setActiveInvoice({ ...invoice });
-                setView('editor');
-            };
-
-            // معالجة الحذف السحابي المؤمن - متاح فقط للمدير العام
-            const executeDeleteInvoice = async () => {
-                if (!deleteTarget || !user) return;
-                try {
-                    const docRef = window.FirebaseSDK.doc(db, 'artifacts', appId, 'public', 'data', 'invoices', deleteTarget);
-                    await window.FirebaseSDK.deleteDoc(docRef);
-                    setDeleteTarget(null);
-                    showMessage('تم بنجاح', 'تم حذف الفاتورة نهائياً من النظام السحابي للشركة.');
-                } catch (err) {
-                    setDeleteTarget(null);
-                    showMessage('خطأ', 'فشل في الاتصال بالسيرفر، يرجى مراجعة الإنترنت.', 'error');
-                }
-            };
-
-            // حفظ ومزامنة الفواتير مع السحاب الموثق بجوجل
-            const handleSaveInvoiceToCloud = async () => {
-                if (!user) return;
-                if (!activeInvoice.clientName.trim()) {
-                    showMessage('تنبيه هام', 'يرجى كتابة اسم العميل أولاً لحفظ الفاتورة.', 'error');
-                    return;
-                }
-
-                setIsSaving(true);
-                try {
-                    const invoicePayload = {
-                        ...activeInvoice,
-                        updatedBy: localUser.name,
-                        updatedAt: Date.now()
-                    };
-
-                    if (!invoicePayload.createdBy) {
-                        invoicePayload.createdBy = localUser.name;
-                        invoicePayload.createdAt = Date.now();
-                    }
-
-                    const collectionRef = window.FirebaseSDK.collection(db, 'artifacts', appId, 'public', 'data', 'invoices');
-
-                    if (invoicePayload.id) {
-                        const docRef = window.FirebaseSDK.doc(db, 'artifacts', appId, 'public', 'data', 'invoices', invoicePayload.id);
-                        await window.FirebaseSDK.setDoc(docRef, invoicePayload);
-                        showMessage('تم التحديث', 'تم تحديث الفاتورة ومزامنتها بنجاح مع السحاب.');
-                    } else {
-                        await window.FirebaseSDK.addDoc(collectionRef, invoicePayload);
-                        showMessage('تم الحفظ السحابي', 'تم تسجيل وحفظ الفاتورة بنجاح داخل حساب جوجل السحابي للشركة.');
-                    }
-                    setView('dashboard');
-                } catch (err) {
-                    console.error("خطأ الحفظ السحابي:", err);
-                    showMessage('خطأ في الاتصال', 'فشل إرسال البيانات السحابية، يرجى مراجعة شبكة الإنترنت.', 'error');
-                } finally {
-                    setIsSaving(false);
-                }
-            };
-
-            const handlePrint = () => {
-                window.print();
-            };
-
-            // تصفية الفواتير بناءً على صلاحيات المستخدم الفعلي وبحث المستخدم
-            const filteredInvoices = dbInvoices.filter(invoice => {
-                // الموظف يشاهد فواتيره فقط، بينما المدير العام يشاهد كل الفواتير
-                const hasPermission = localUser.isAdmin || invoice.createdBy === localUser.name;
-                const matchesSearch = 
-                    invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    invoice.invoiceNumber.includes(searchQuery);
-                return hasPermission && matchesSearch;
-            });
-
-            const handleEditorDataChange = (field, value) => {
-                setActiveInvoice({ ...activeInvoice, [field]: value });
-            };
-
-            const handleEditorItemChange = (id, field, value) => {
-                const updatedItems = activeInvoice.items.map(item => {
-                    if (item.id === id) {
-                        return { ...item, [field]: field === 'qty' || field === 'price' ? Number(value) : value };
-                    }
-                    return item;
-                });
-                setActiveInvoice({ ...activeInvoice, items: updatedItems });
-            };
-
-            const addEditorItem = () => {
-                const newItem = {
-                    id: activeInvoice.items.length > 0 ? Math.max(...activeInvoice.items.map(i => i.id)) + 1 : 1,
-                    description: '', qty: 0, price: 0
-                };
-                setActiveInvoice({ ...activeInvoice, items: [...activeInvoice.items, newItem] });
-            };
-
-            const removeEditorItem = (id) => {
-                setActiveInvoice({ ...activeInvoice, items: activeInvoice.items.filter(item => item.id !== id) });
-            };
-
-            const subTotal = activeInvoice?.items ? activeInvoice.items.reduce((sum, item) => sum + (item.qty * item.price), 0) : 0;
-            const discountAmount = (subTotal * (activeInvoice?.discountPercent || 0)) / 100;
-            const total = subTotal - discountAmount;
-
-            const formatNumber = (num) => {
-                return num.toLocaleString('en-US');
-            };
-
-            // 1. شاشة تسجيل الدخول المخصصة والمحميّة
-            if (view === 'login') {
+            // الباركود الذكي
+            const SmartQRCode = ({ dataUrl, label }) => {
+                const encodedUrl = encodeURIComponent(dataUrl);
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodedUrl}`;
                 return (
-                    <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4 py-12 relative overflow-hidden">
-                        <div className="absolute opacity-10 pointer-events-none">
-                            <AmiasLogo className="w-[600px] h-auto" />
-                        </div>
-                        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative z-10 border-t-8 border-[#2d206b]">
-                            <div className="flex flex-col items-center mb-6">
-                                <AmiasLogo className="w-28 h-auto mb-2" />
-                                <h2 className="text-xl font-bold text-[#2d206b] mt-1">بوابة الدخول السحابية الموحدة</h2>
-                                <p className="text-xs text-gray-500 mt-1">شركة أمياس للمقاولات</p>
-                            </div>
-                            <form onSubmit={handleLogin} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">اسم المستخدم</label>
-                                    <select 
-                                        value={loginData.username}
-                                        onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-                                        className="w-full border-2 border-gray-300 rounded-lg p-2.5 focus:border-[#4b3b94] outline-none font-bold text-gray-700"
-                                    >
-                                        <option value="Yassin shrif">Yassin shrif (المدير العام)</option>
-                                        <option value="المبيعات 1">المبيعات 1 (الموظف)</option>
-                                        <option value="المبيعات 2">المبيعات 2 (الموظف)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">رمز المرور الخاص بالحساب</label>
-                                    <input 
-                                        type="password" required placeholder="••••••••"
-                                        value={loginData.password}
-                                        onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                                        className="w-full border-2 border-gray-300 rounded-lg p-2.5 focus:border-[#4b3b94] outline-none text-center font-mono font-bold"
-                                    />
-                                </div>
-                                {loginError && (
-                                    <div className="bg-red-50 text-red-600 text-sm font-bold p-3 rounded-lg text-center border border-red-200">⚠️ {loginError}</div>
-                                )}
-                                <button type="submit" className="w-full bg-[#2d206b] hover:bg-[#1a1240] text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all mt-4">
-                                    تسجيل الدخول الآمن
-                                </button>
-                            </form>
-                            <div className="text-center mt-6 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                                AMIAS Cloud System 2026
-                            </div>
-                        </div>
+                    <div className="flex flex-col items-center">
+                        <img src={qrApiUrl} alt={label} className="w-16 h-16 object-contain bg-white p-0.5 border border-gray-300 rounded-md shadow-sm" />
+                        <span className="text-[10px] font-bold text-[#2d206b] mt-1 tracking-wider uppercase">{label}</span>
                     </div>
                 );
-            }
+            };
 
-            // 2. لوحة التحكم السحابية المراقبة (Dashboard)
-            if (view === 'dashboard') {
-                return (
-                    <div className="min-h-screen bg-slate-100 p-4 md:p-8">
-                        {/* هيدر لوحة التحكم */}
-                        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-md border-r-8 border-[#2d206b] mb-6 gap-4">
-                            <div className="flex items-center gap-4">
-                                <AmiasLogo className="w-20 h-auto" />
-                                <div>
-                                    <h1 className="text-xl md:text-2xl font-bold text-[#2d206b]">لوحة التحكم في الفواتير السحابية</h1>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
-                                        <p className="text-xs text-gray-500 font-bold">الحساب النشط: <span className="text-[#4b3b94]">{localUser.name}</span> {localUser.isAdmin ? '(المدير العام)' : '(موظف مبيعات)'}</p>
+            // التهيئة السحابية المؤمنة
+            const firebaseConfig = {
+                apiKey: "AIzaSyAcEQy75s7qUAG07GvLXdmmvBwbyCNASww",
+                authDomain: "amias-invoice.firebaseapp.com",
+                projectId: "amias-invoice",
+                storageBucket: "amias-invoice.firebasestorage.app",
+                messagingSenderId: "521382676875",
+                appId: "1:521382676875:web:735c995856fdd17274c78e"
+            };
+
+            const app = window.FirebaseSDK.initializeApp(firebaseConfig);
+            const auth = window.FirebaseSDK.getAuth(app);
+            const db = window.FirebaseSDK.getFirestore(app);
+            const sysAppId = 'amias-invoice-v1';
+
+            const USERS_CREDENTIALS = {
+                "Yassin shrif": { pass: "amias2026", isAdmin: true },
+                "المبيعات 1": { pass: "sales1", isAdmin: false },
+                "المبيعات 2": { pass: "sales2", isAdmin: false }
+            };
+
+            function App() {
+                const [localUser, setLocalUser] = useState(() => {
+                    const saved = sessionStorage.getItem('amias_user');
+                    return saved ? JSON.parse(saved) : null;
+                });
+                const [loginData, setLoginData] = useState({ username: 'Yassin shrif', password: '' });
+                const [loginError, setLoginError] = useState('');
+                const [view, setView] = useState(localUser ? 'dashboard' : 'login');
+                const [activeInvoice, setActiveInvoice] = useState(null);
+                const [searchQuery, setSearchQuery] = useState('');
+                const [dbInvoices, setDbInvoices] = useState([]);
+                const [user, setUser] = useState(null);
+                const [modal, setModal] = useState({ show: false, title: '', message: '', type: 'success' });
+                const [deleteTarget, setDeleteTarget] = useState(null);
+                const [isSaving, setIsSaving] = useState(false);
+
+                // تسجيل دخول مخفي لتأمين السيرفر فوراً
+                useEffect(() => {
+                    const initAuth = async () => {
+                        try { await window.FirebaseSDK.signInAnonymously(auth); } 
+                        catch (err) { console.error("Error:", err); }
+                    };
+                    initAuth();
+                    const unsubscribe = window.FirebaseSDK.onAuthStateChanged(auth, setUser);
+                    return () => unsubscribe();
+                }, []);
+
+                // جلب الداتا بناءً على قوانين الأمان
+                useEffect(() => {
+                    if (!user) return;
+                    const path = `artifacts/${sysAppId}/public/data/company_invoices`;
+                    const invoicesRef = window.FirebaseSDK.collection(db, path);
+                    const unsubscribe = window.FirebaseSDK.onSnapshot(invoicesRef, (snapshot) => {
+                        const list = [];
+                        snapshot.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
+                        list.sort((a, b) => b.createdAt - a.createdAt);
+                        setDbInvoices(list);
+                    }, (error) => console.error(error));
+                    return () => unsubscribe();
+                }, [user]);
+
+                const showMessage = (title, message, type = 'success') => setModal({ show: true, title, message, type });
+
+                const handleLogin = (e) => {
+                    e.preventDefault();
+                    setLoginError('');
+                    const creds = USERS_CREDENTIALS[loginData.username];
+                    if (creds && creds.pass === loginData.password) {
+                        const sessionData = { name: loginData.username, isAdmin: creds.isAdmin };
+                        setLocalUser(sessionData);
+                        sessionStorage.setItem('amias_user', JSON.stringify(sessionData));
+                        setView('dashboard');
+                    } else {
+                        setLoginError('اسم المستخدم أو كلمة المرور غير صحيحة!');
+                    }
+                };
+
+                const handleLogout = () => {
+                    sessionStorage.removeItem('amias_user');
+                    setLocalUser(null);
+                    setLoginData({ username: 'Yassin shrif', password: '' });
+                    setView('login');
+                };
+
+                const handleCreateNewInvoice = () => {
+                    setActiveInvoice({
+                        date: new Date().toLocaleDateString('en-GB'),
+                        invoiceNumber: String(dbInvoices.length + 1).padStart(3, '0'),
+                        clientName: '', projectName: '', currency: 'جنيه سوداني',
+                        notes: '10 سنوات ضمان للألواح وسنة للنظام.\nالمتابعة ما بعد التركيب.',
+                        discountPercent: 0,
+                        items: [
+                            { id: 1, description: '', qty: 0, price: 0 },
+                            { id: 2, description: '', qty: 0, price: 0 },
+                            { id: 3, description: '', qty: 0, price: 0 },
+                            { id: 4, description: '', qty: 0, price: 0 },
+                        ]
+                    });
+                    setView('editor');
+                };
+
+                const handleEditInvoice = (invoice) => { setActiveInvoice({ ...invoice }); setView('editor'); };
+
+                const executeDeleteInvoice = async () => {
+                    if (!deleteTarget || !user) return;
+                    try {
+                        const docRef = window.FirebaseSDK.doc(db, `artifacts/${sysAppId}/public/data/company_invoices`, deleteTarget);
+                        await window.FirebaseSDK.deleteDoc(docRef);
+                        setDeleteTarget(null);
+                        showMessage('تم بنجاح', 'تم حذف الفاتورة نهائياً من النظام السحابي.');
+                    } catch (err) {
+                        setDeleteTarget(null);
+                        showMessage('خطأ', 'فشل الاتصال، يرجى المراجعة.', 'error');
+                    }
+                };
+
+                const handleSaveInvoiceToCloud = async () => {
+                    if (!user) return;
+                    if (!activeInvoice.clientName.trim()) return showMessage('تنبيه هام', 'يرجى كتابة اسم العميل أولاً.', 'error');
+
+                    setIsSaving(true);
+                    try {
+                        const invoicePayload = { ...activeInvoice, updatedBy: localUser.name, updatedAt: Date.now() };
+                        if (!invoicePayload.createdBy) {
+                            invoicePayload.createdBy = localUser.name;
+                            invoicePayload.createdAt = Date.now();
+                        }
+                        
+                        const { id, ...dataToSave } = invoicePayload;
+                        const collectionRef = window.FirebaseSDK.collection(db, `artifacts/${sysAppId}/public/data/company_invoices`);
+
+                        if (id) {
+                            const docRef = window.FirebaseSDK.doc(db, `artifacts/${sysAppId}/public/data/company_invoices`, id);
+                            await window.FirebaseSDK.setDoc(docRef, dataToSave);
+                            showMessage('تم التحديث', 'تم تحديث الفاتورة ومزامنتها بنجاح.');
+                        } else {
+                            await window.FirebaseSDK.addDoc(collectionRef, dataToSave);
+                            showMessage('تم الحفظ', 'تم تسجيل الفاتورة بنجاح في سيرفرات جوجل.');
+                        }
+                        setView('dashboard');
+                    } catch (err) {
+                        showMessage('خطأ', 'فشل الحفظ، تأكد من الإنترنت.', 'error');
+                    } finally { setIsSaving(false); }
+                };
+
+                const filteredInvoices = dbInvoices.filter(invoice => {
+                    const hasPermission = localUser.isAdmin || invoice.createdBy === localUser.name;
+                    const matchesSearch = invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase()) || invoice.invoiceNumber.includes(searchQuery);
+                    return hasPermission && matchesSearch;
+                });
+
+                const handleEditorDataChange = (field, value) => setActiveInvoice({ ...activeInvoice, [field]: value });
+                const handleEditorItemChange = (id, field, value) => {
+                    const updatedItems = (activeInvoice.items || []).map(item => item.id === id ? { ...item, [field]: field === 'qty' || field === 'price' ? Number(value) : value } : item);
+                    setActiveInvoice({ ...activeInvoice, items: updatedItems });
+                };
+                const addEditorItem = () => {
+                    const currentItems = activeInvoice.items || [];
+                    const newItem = { id: currentItems.length > 0 ? Math.max(...currentItems.map(i => i.id)) + 1 : 1, description: '', qty: 0, price: 0 };
+                    setActiveInvoice({ ...activeInvoice, items: [...currentItems, newItem] });
+                };
+                const removeEditorItem = (id) => setActiveInvoice({ ...activeInvoice, items: (activeInvoice.items || []).filter(item => item.id !== id) });
+
+                const subTotal = (activeInvoice?.items || []).reduce((sum, item) => sum + ((item.qty || 0) * (item.price || 0)), 0);
+                const discountAmount = (subTotal * (activeInvoice?.discountPercent || 0)) / 100;
+                const total = subTotal - discountAmount;
+                const formatNumber = (num) => num.toLocaleString('en-US');
+
+                if (view === 'login') {
+                    return (
+                        <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4 py-12 relative overflow-hidden">
+                            <div className="absolute opacity-10 pointer-events-none"><AmiasLogo className="w-[600px] h-auto" /></div>
+                            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative z-10 border-t-8 border-[#2d206b]">
+                                <div className="flex flex-col items-center mb-6">
+                                    <AmiasLogo className="w-28 h-auto mb-2" />
+                                    <h2 className="text-xl font-bold text-[#2d206b] mt-1">بوابة الدخول السحابية الموحدة</h2>
+                                </div>
+                                <form onSubmit={handleLogin} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">اسم المستخدم</label>
+                                        <select value={loginData.username} onChange={(e) => setLoginData({ ...loginData, username: e.target.value })} className="w-full border-2 border-gray-300 rounded-lg p-2.5 focus:border-[#4b3b94] outline-none font-bold text-gray-700">
+                                            <option value="Yassin shrif">Yassin shrif (المدير العام)</option>
+                                            <option value="المبيعات 1">المبيعات 1 (الموظف)</option>
+                                            <option value="المبيعات 2">المبيعات 2 (الموظف)</option>
+                                        </select>
                                     </div>
-                                    <div className="text-[10px] text-gray-400 font-mono mt-1 select-all">معرف المستخدم السحابي: {user ? user.uid : 'جارِ الاتصال...'}</div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">رمز المرور</label>
+                                        <input type="password" required placeholder="••••••••" value={loginData.password} onChange={(e) => setLoginData({ ...loginData, password: e.target.value })} className="w-full border-2 border-gray-300 rounded-lg p-2.5 focus:border-[#4b3b94] outline-none text-center font-mono font-bold" />
+                                    </div>
+                                    {loginError && <div className="bg-red-50 text-red-600 text-sm font-bold p-3 rounded-lg text-center border border-red-200">⚠️ {loginError}</div>}
+                                    <button type="submit" className="w-full bg-[#2d206b] hover:bg-[#1a1240] text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all mt-4">تسجيل الدخول الآمن</button>
+                                </form>
+                            </div>
+                        </div>
+                    );
+                }
+
+                if (view === 'dashboard') {
+                    return (
+                        <div className="min-h-screen bg-slate-100 p-4 md:p-8">
+                            <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-md border-r-8 border-[#2d206b] mb-6 gap-4">
+                                <div className="flex items-center gap-4">
+                                    <AmiasLogo className="w-20 h-auto" />
+                                    <div>
+                                        <h1 className="text-xl md:text-2xl font-bold text-[#2d206b]">لوحة التحكم في الفواتير</h1>
+                                        <p className="text-xs text-gray-500 font-bold mt-1">الحساب النشط: <span className="text-[#4b3b94]">{localUser.name}</span></p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <button onClick={handleCreateNewInvoice} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-5 rounded-lg shadow-md flex items-center gap-2 text-sm transition-all">
-                                    <IconPlus /> إنشاء فاتورة جديدة
-                                </button>
-                                <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-4 rounded-lg shadow-md flex items-center gap-2 text-sm transition-all">
-                                    <IconLogout /> تسجيل خروج
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* إحصائيات عامة وسريعة */}
-                        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
-                                <span className="text-sm font-bold text-gray-500">مجموع مبيعات الفواتير الحالية</span>
-                                <span className="text-2xl font-black text-[#2d206b] mt-2">
-                                    {formatNumber(filteredInvoices.reduce((sum, inv) => sum + (inv.items ? inv.items.reduce((iSum, i) => iSum + (i.qty * i.price), 0) - ((inv.items.reduce((iSum, i) => iSum + (i.qty * i.price), 0) * (inv.discountPercent || 0)) / 100) : 0), 0))} <span className="text-sm font-bold">ج.س</span>
-                                </span>
-                            </div>
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
-                                <span className="text-sm font-bold text-gray-500">عدد الفواتير المصدرة</span>
-                                <span className="text-2xl font-black text-green-600 mt-2">{filteredInvoices.length} فواتير</span>
-                            </div>
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
-                                <span className="text-sm font-bold text-gray-500">حالة قاعدة البيانات السحابية</span>
-                                <span className="text-sm font-bold text-blue-600 mt-4 flex items-center gap-2">
-                                    <span className="w-3 h-3 bg-blue-600 rounded-full animate-ping"></span> متصل بحساب جوجل للشركة
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* جدول استعراض الفواتير والتحكم بها */}
-                        <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200">
-                            <div className="p-6 bg-gray-50 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
-                                <h3 className="font-bold text-[#2d206b] text-lg">قائمة الفواتير السحابية الموثقة</h3>
-                                <div className="w-full md:w-72">
-                                    <input 
-                                        type="text" placeholder="البحث باسم العميل أو رقم الفاتورة..."
-                                        value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full border-2 border-gray-300 rounded-lg py-2 px-3 outline-none focus:border-[#4b3b94] text-sm"
-                                    />
+                                <div className="flex gap-3">
+                                    <button onClick={handleCreateNewInvoice} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-5 rounded-lg flex items-center gap-2 text-sm"><IconPlus /> فاتورة جديدة</button>
+                                    <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-4 rounded-lg flex items-center gap-2 text-sm"><IconLogout /> خروج</button>
                                 </div>
                             </div>
 
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-center text-sm">
-                                    <thead>
-                                        <tr className="bg-[#eeecf5] text-[#2d206b] font-bold border-b border-gray-200">
-                                            <th className="p-4">رقم الفاتورة</th>
-                                            <th className="p-4">اسم العميل</th>
-                                            <th className="p-4">التاريخ</th>
-                                            <th className="p-4">القيمة الإجمالية</th>
-                                            <th className="p-4">بواسطة</th>
-                                            <th className="p-4">التحكم والعمليات</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {filteredInvoices.length === 0 ? (
-                                            <tr>
-                                                <td colSpan="6" className="p-8 text-gray-500 font-bold text-center">لا توجد فواتير صادرة حتى الآن.</td>
+                            <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                    <span className="text-sm font-bold text-gray-500">إجمالي المبيعات الظاهرة</span>
+                                    <div className="text-2xl font-black text-[#2d206b] mt-2">{formatNumber(filteredInvoices.reduce((sum, inv) => sum + (inv.items ? inv.items.reduce((iSum, i) => iSum + ((i.qty || 0) * (i.price || 0)), 0) - ((inv.items.reduce((iSum, i) => iSum + ((i.qty || 0) * (i.price || 0)), 0) * (inv.discountPercent || 0)) / 100) : 0), 0))} ج.س</div>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                    <span className="text-sm font-bold text-gray-500">عدد الفواتير المصدرة</span>
+                                    <div className="text-2xl font-black text-green-600 mt-2">{filteredInvoices.length} فواتير</div>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                    <span className="text-sm font-bold text-gray-500">حالة السيرفر</span>
+                                    <div className="text-sm font-bold text-blue-600 mt-4 flex items-center gap-2"><span className="w-3 h-3 bg-blue-600 rounded-full animate-ping"></span> متصل بـ جوجل</div>
+                                </div>
+                            </div>
+
+                            <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200">
+                                <div className="p-6 bg-gray-50 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                                    <h3 className="font-bold text-[#2d206b] text-lg">قائمة الفواتير السحابية</h3>
+                                    <input type="text" placeholder="بحث..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full md:w-72 border-2 border-gray-300 rounded-lg py-2 px-3 outline-none focus:border-[#4b3b94]" />
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-center text-sm">
+                                        <thead>
+                                            <tr className="bg-[#eeecf5] text-[#2d206b] font-bold border-b border-gray-200">
+                                                <th className="p-4">رقم الفاتورة</th><th className="p-4">اسم العميل</th><th className="p-4">التاريخ</th><th className="p-4">القيمة الإجمالية</th><th className="p-4">بواسطة</th><th className="p-4">العمليات</th>
                                             </tr>
-                                        ) : (
-                                            filteredInvoices.map((invoice) => {
-                                                const invSubtotal = invoice.items ? invoice.items.reduce((sum, item) => sum + (item.qty * item.price), 0) : 0;
-                                                const invTotal = invSubtotal - ((invSubtotal * (invoice.discountPercent || 0)) / 100);
-                                                return (
-                                                    <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
-                                                        <td className="p-4 font-mono font-bold text-gray-700">{invoice.invoiceNumber}</td>
-                                                        <td className="p-4 font-bold text-[#2d206b]">{invoice.clientName}</td>
-                                                        <td className="p-4 text-gray-500 font-bold">{invoice.date}</td>
-                                                        <td className="p-4 font-black text-gray-800">{formatNumber(invTotal)} {invoice.currency}</td>
-                                                        <td className="p-4 font-bold text-blue-600">{invoice.createdBy}</td>
-                                                        <td className="p-4 flex justify-center gap-2">
-                                                            <button onClick={() => handleEditInvoice(invoice)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3.5 rounded-lg text-xs shadow transition-all">تعديل وعرض 👁️</button>
-                                                            {localUser.isAdmin && (
-                                                                <button onClick={() => setDeleteTarget(invoice.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1.5 px-3.5 rounded-lg text-xs shadow transition-all">حذف ✕</button>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {filteredInvoices.length === 0 ? (
+                                                <tr><td colSpan="6" className="p-8 text-gray-500 font-bold">لا توجد فواتير.</td></tr>
+                                            ) : (
+                                                filteredInvoices.map((invoice) => {
+                                                    const invSubtotal = invoice.items ? invoice.items.reduce((sum, item) => sum + ((item.qty || 0) * (item.price || 0)), 0) : 0;
+                                                    const invTotal = invSubtotal - ((invSubtotal * (invoice.discountPercent || 0)) / 100);
+                                                    return (
+                                                        <tr key={invoice.id} className="hover:bg-gray-50">
+                                                            <td className="p-4 font-mono font-bold text-gray-700">{invoice.invoiceNumber}</td>
+                                                            <td className="p-4 font-bold text-[#2d206b]">{invoice.clientName}</td>
+                                                            <td className="p-4 text-gray-500 font-bold">{invoice.date}</td>
+                                                            <td className="p-4 font-black text-gray-800">{formatNumber(invTotal)} {invoice.currency}</td>
+                                                            <td className="p-4 font-bold text-blue-600">{invoice.createdBy}</td>
+                                                            <td className="p-4 flex justify-center gap-2">
+                                                                <button onClick={() => handleEditInvoice(invoice)} className="bg-blue-600 text-white font-bold py-1.5 px-3.5 rounded-lg text-xs">تعديل 👁️</button>
+                                                                {localUser.isAdmin && <button onClick={() => setDeleteTarget(invoice.id)} className="bg-red-500 text-white font-bold py-1.5 px-3.5 rounded-lg text-xs">حذف ✕</button>}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            {deleteTarget && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm border-t-8 border-red-500 text-center">
+                                        <h3 className="text-lg font-bold text-red-600 mb-2">تأكيد حذف الفاتورة</h3>
+                                        <p className="text-sm text-gray-600 font-bold mb-6">هل أنت متأكد من حذف الفاتورة نهائياً من السيرفر؟</p>
+                                        <div className="flex gap-3 justify-center">
+                                            <button onClick={executeDeleteInvoice} className="bg-red-600 text-white font-bold py-2 px-6 rounded-lg text-sm">حذف</button>
+                                            <button onClick={() => setDeleteTarget(null)} className="bg-gray-200 text-gray-700 font-bold py-2 px-6 rounded-lg text-sm">إلغاء</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                }
+
+                if (view === 'editor') {
+                    const currentItems = activeInvoice.items || [];
+                    return (
+                        <div className="min-h-screen py-8 print:py-0 flex print:block justify-center font-sans print:m-0 bg-gray-100">
+                            <div className="fixed top-4 left-4 z-50 print-hidden flex flex-col gap-3">
+                                <button onClick={() => window.print()} className="bg-[#2d206b] hover:bg-[#1a1240] text-white p-4 rounded-full shadow-lg transition-transform hover:scale-105" title="طباعة"><IconPrinter /></button>
+                                <button onClick={handleSaveInvoiceToCloud} disabled={isSaving} className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-full shadow-lg transition-transform hover:scale-105" title="حفظ ومزامنة">
+                                    {isSaving ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : <IconSave />}
+                                </button>
+                                <button onClick={() => setView('dashboard')} className="bg-gray-600 hover:bg-gray-700 text-white p-4 rounded-full shadow-lg transition-transform hover:scale-105" title="رجوع"><IconBack /></button>
+                            </div>
+
+                            <div className="w-full max-w-[210mm] bg-white shadow-2xl print:shadow-none print:w-full relative overflow-hidden flex flex-col mx-auto print:block">
+                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none"><AmiasLogo className="w-[800px] h-auto" /></div>
+                                <div className="relative">
+                                    <svg className="absolute top-0 left-0 w-full h-48 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                        <path d="M0,0 L100,0 L100,20 Q50,40 0,20 Z" fill="#4b3b94" opacity="0.1" /><path d="M0,0 L100,0 L100,10 Q50,30 0,10 Z" fill="#2d206b" opacity="0.8" />
+                                    </svg>
+                                    <div className="pt-10 px-8 pb-4 flex justify-between items-center relative z-10 text-[#2d206b]">
+                                        <div className="text-right flex-1"><h1 className="text-3xl font-bold mb-1">شركة امياس للمقاولات</h1></div>
+                                        <div className="flex-1 flex flex-col items-center justify-center mt-2"><AmiasLogo className="w-32 h-auto" /></div>
+                                        <div className="text-left flex-1" dir="ltr"><h1 className="text-4xl font-cursive text-[#2d206b]">Amias Contracting</h1></div>
+                                    </div>
+                                </div>
+                                <div className="px-10 mt-2 relative z-10">
+                                    <div className="flex items-center border-b-2 border-[#2d206b] pb-2 mt-4">
+                                        <div className="flex-1 flex items-center gap-2"><span className="font-bold text-gray-700">التاريخ:</span><input type="text" value={activeInvoice.date} onChange={(e) => handleEditorDataChange('date', e.target.value)} className="w-28 outline-none bg-transparent" /></div>
+                                        <div className="flex-1 text-center"><h2 className="text-2xl font-bold text-[#2d206b] border-b-4 border-gray-300 pb-1 px-8 inline-block">فاتورة</h2></div>
+                                        <div className="flex-1 flex items-center justify-end gap-2"><span className="font-bold text-gray-700">رقم الفاتورة:</span><input type="text" value={activeInvoice.invoiceNumber} onChange={(e) => handleEditorDataChange('invoiceNumber', e.target.value)} className="w-24 text-left font-mono outline-none bg-transparent font-bold" /></div>
+                                    </div>
+                                </div>
+                                <div className="px-10 mt-6 relative z-10">
+                                    <div className="text-center font-bold text-lg mb-4 flex justify-center items-center gap-2">
+                                        <span>نظام مقاولة خاص لـ:</span>
+                                        <input type="text" value={activeInvoice.clientName} onChange={(e) => handleEditorDataChange('clientName', e.target.value)} className="border-b border-gray-400 outline-none text-center min-w-[250px] bg-transparent text-[#2d206b] font-bold" placeholder="اكتب اسم العميل هنا..." />
+                                    </div>
+                                    <div className="bg-gray-100 border border-gray-300 rounded p-3 text-center mb-6">
+                                        <input type="text" value={activeInvoice.projectName} onChange={(e) => handleEditorDataChange('projectName', e.target.value)} className="w-full text-center outline-none bg-transparent font-bold text-gray-800" placeholder="وصف المشروع أو التفاصيل هنا..." />
+                                    </div>
+                                </div>
+                                <div className="px-10 relative z-10 mb-4">
+                                    <table className="w-full border-collapse border border-gray-400 text-sm text-center">
+                                        <thead>
+                                            <tr className="bg-[#eeecf5] border-b border-gray-400">
+                                                <th className="py-2 w-12 font-bold text-[#2d206b] border-l border-gray-400">م</th><th className="py-2 font-bold text-[#2d206b] border-l border-gray-400">الوصف والبيان</th><th className="py-2 w-24 font-bold text-[#2d206b] border-l border-gray-400">الكمية</th><th className="py-2 w-32 font-bold text-[#2d206b] border-l border-gray-400">سعر الوحدة</th><th className="py-2 w-40 font-bold text-[#2d206b] border-l border-gray-400">الجملة</th><th className="w-10 print-hidden"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {currentItems.map((item, index) => (
+                                                <tr key={item.id} className="border-b border-gray-300 hover:bg-gray-50">
+                                                    <td className="py-2 bg-gray-100 font-bold border-l border-gray-400">{index + 1}</td>
+                                                    <td className="p-1 text-right border-l border-gray-400"><input type="text" value={item.description} onChange={(e) => handleEditorItemChange(item.id, 'description', e.target.value)} className="w-full outline-none bg-transparent px-2" placeholder="وصف العمل..." /></td>
+                                                    <td className="p-1 border-l border-gray-400"><input type="number" value={item.qty === 0 ? '' : item.qty} onChange={(e) => handleEditorItemChange(item.id, 'qty', e.target.value)} className="w-full outline-none text-center bg-transparent" placeholder="0" /></td>
+                                                    <td className="p-1 bg-gray-50 border-l border-gray-400"><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => handleEditorItemChange(item.id, 'price', e.target.value)} className="w-full outline-none text-center bg-transparent" placeholder="0" /></td>
+                                                    <td className="py-2 font-bold bg-gray-100 border-l border-gray-400">{item.qty * item.price === 0 ? '-' : formatNumber(item.qty * item.price)}</td>
+                                                    <td className="print-hidden text-center"><button onClick={() => removeEditorItem(item.id)} className="text-red-500 hover:text-red-700"><IconTrash /></button></td>
+                                                </tr>
+                                            ))}
+                                            <tr className="bg-[#eeecf5] font-bold text-lg border-t-2 border-gray-400">
+                                                <td colSpan="4" className="py-3 text-center text-[#2d206b] border-l border-gray-400">الإجمالي الكلي</td><td className="py-3 text-center border-l border-gray-400">{subTotal === 0 ? '-' : formatNumber(subTotal)}</td><td className="print-hidden"></td>
+                                            </tr>
+                                            <tr className={`font-bold ${activeInvoice.discountPercent === 0 ? 'print-hidden' : 'bg-red-50 text-red-600'}`}>
+                                                <td colSpan="3" className="py-2 text-left px-4 border-l border-gray-400">الخصم المئوي %</td>
+                                                <td className="p-1 bg-white border-l border-gray-400"><div className="flex items-center justify-center gap-1"><input type="number" value={activeInvoice.discountPercent === 0 ? '' : activeInvoice.discountPercent} onChange={(e) => handleEditorDataChange('discountPercent', Number(e.target.value))} className="w-12 outline-none text-center bg-transparent text-red-600 font-bold border-b border-dashed border-red-300" placeholder="0" /><span>%</span></div></td>
+                                                <td className="py-2 text-center bg-red-50 border-l border-gray-400">{activeInvoice.discountPercent > 0 ? `- ${formatNumber(discountAmount)}` : '-'}</td><td className="print-hidden"></td>
+                                            </tr>
+                                            {activeInvoice.discountPercent > 0 && (
+                                                <tr className="bg-[#2d206b] text-white font-bold text-lg"><td colSpan="4" className="py-3 text-center border-l border-gray-400">الصافي النهائي</td><td className="py-3 text-center border-l border-gray-400">{formatNumber(total)}</td><td className="print-hidden"></td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                    <button onClick={addEditorItem} className="print-hidden flex items-center gap-1 text-[#4b3b94] font-bold my-2"><IconPlus /> إضافة صنف</button>
+                                </div>
+                                <div className="px-10 mt-4 mb-8 flex justify-between items-start relative z-10 gap-6">
+                                    <div className="flex-[1.5]">
+                                        <div className="flex items-center gap-2 mb-2"><span className="text-sm font-bold text-gray-700">العملة:</span><input type="text" value={activeInvoice.currency} onChange={(e) => handleEditorDataChange('currency', e.target.value)} className="w-32 font-bold outline-none bg-transparent" /></div>
+                                        <div className="mt-4"><h4 className="font-bold text-[#2d206b] mb-2">ملاحظات وتنبيهات:</h4><textarea value={activeInvoice.notes} onChange={(e) => handleEditorDataChange('notes', e.target.value)} className="w-full h-20 outline-none border border-transparent p-2 bg-transparent resize-none text-sm font-bold text-gray-700 leading-relaxed" /></div>
+                                    </div>
+                                    <div className="flex-1 flex justify-center items-center gap-6 mt-6 opacity-90">
+                                        <SmartQRCode dataUrl="https://facebook.com/AmiasContracting" label="Facebook" />
+                                        <SmartQRCode dataUrl="https://tiktok.com/@AmiasContracting" label="TikTok" />
+                                    </div>
+                                    <div className="flex-[0.8] flex flex-col items-center justify-center mt-2">
+                                        <div className="transform -rotate-12"><AmiasStamp className="w-32 h-32" /></div><p className="text-xs text-gray-500 mt-2 font-bold">الختم والتوقيع</p>
+                                    </div>
+                                </div>
+                                <div className="relative w-full mt-auto">
+                                    <div className="bg-[#2d206b] text-white py-3 px-8 flex justify-between items-center text-sm" dir="ltr">
+                                        <div className="flex items-center gap-2 font-bold"><IconPhone /> <span>0963811138 - 0991090140</span></div>
+                                        <div className="flex items-center gap-2 font-bold"><IconHash /> <span>AmiasContracting</span></div>
+                                        <div className="flex items-center gap-2 font-bold"><IconMail /> <span>amiasgc@gmail.com</span></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    );
+                }
 
-                        {/* نافذة تأكيد الحذف الخاصة والآمنة */}
-                        {deleteTarget && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-                                <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm border-t-8 border-red-500 text-center">
-                                    <h3 className="text-lg font-bold text-red-600 mb-2">تأكيد حذف الفاتورة</h3>
-                                    <p className="text-sm text-gray-600 font-bold mb-6">هل أنت متأكد من حذف الفاتورة نهائياً من السيرفر؟ هذه الخطوة لا يمكن التراجع عنها.</p>
-                                    <div className="flex gap-3 justify-center">
-                                        <button onClick={executeDeleteInvoice} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg shadow text-sm">تأكيد الحذف</button>
-                                        <button onClick={() => setDeleteTarget(null)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg shadow text-sm">إلغاء</button>
-                                    </div>
+                return (
+                    <div>
+                        {modal.show && (
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 p-4">
+                                <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm border-t-8 border-[#2d206b] text-center">
+                                    <h3 className="text-lg font-bold text-[#2d206b] mb-2">{modal.title}</h3>
+                                    <p className="text-sm text-gray-600 font-bold mb-4">{modal.message}</p>
+                                    <button onClick={() => setModal({ ...modal, show: false })} className="bg-[#2d206b] text-white font-bold py-2 px-6 rounded-lg shadow text-sm">حسناً</button>
                                 </div>
                             </div>
                         )}
@@ -536,161 +537,17 @@
                 );
             }
 
-            // 3. شاشة محرر ومصمم فواتير أمياس المعتمد والكامل بالملي
-            if (view === 'editor') {
-                return (
-                    <div className="min-h-screen py-8 print:py-0 flex print:block justify-center font-sans print:m-0 bg-gray-100">
-                        <div className="fixed top-4 left-4 z-50 print-hidden flex flex-col gap-3">
-                            <button onClick={handlePrint} className="bg-[#2d206b] hover:bg-[#1a1240] text-white p-4 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105" title="طباعة الفاتورة"><IconPrinter /></button>
-                            <button onClick={handleSaveInvoiceToCloud} disabled={isSaving} className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105" title="حفظ ومزامنة سحابية">
-                                {isSaving ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : <IconSave />}
-                            </button>
-                            <button onClick={() => setView('dashboard')} className="bg-gray-600 hover:bg-gray-700 text-white p-4 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105" title="رجوع"><IconBack /></button>
-                        </div>
+            // تشغيل التطبيق النهائي
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<App />);
+        };
 
-                        <div className="w-full max-w-[210mm] bg-white shadow-2xl print:shadow-none print:w-full relative overflow-hidden flex flex-col mx-auto print:block">
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none">
-                                <AmiasLogo className="w-[800px] h-auto" />
-                            </div>
-
-                            <div className="relative">
-                                <svg className="absolute top-0 left-0 w-full h-48 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                                    <path d="M0,0 L100,0 L100,20 Q50,40 0,20 Z" fill="#4b3b94" opacity="0.1" />
-                                    <path d="M0,0 L100,0 L100,10 Q50,30 0,10 Z" fill="#2d206b" opacity="0.8" />
-                                </svg>
-                                <div className="pt-10 px-8 pb-4 flex justify-between items-center relative z-10 text-[#2d206b]">
-                                    <div className="text-right flex-1"><h1 className="text-3xl font-bold mb-1">شركة امياس للمقاولات</h1></div>
-                                    <div className="flex-1 flex flex-col items-center justify-center mt-2"><AmiasLogo className="w-32 h-auto" /></div>
-                                    <div className="text-left flex-1" dir="ltr"><h1 className="text-4xl font-cursive text-[#2d206b]">Amias Contracting</h1></div>
-                                </div>
-                            </div>
-
-                            <div className="px-10 mt-2 relative z-10">
-                                <div className="flex items-center border-b-2 border-[#2d206b] pb-2 mt-4">
-                                    <div className="flex-1 flex items-center gap-2">
-                                        <span className="font-bold text-gray-700">التاريخ:</span>
-                                        <input type="text" value={activeInvoice.date} onChange={(e) => handleEditorDataChange('date', e.target.value)} className="w-28 outline-none bg-transparent" />
-                                    </div>
-                                    <div className="flex-1 text-center"><h2 className="text-2xl font-bold text-[#2d206b] border-b-4 border-gray-300 pb-1 px-8 inline-block">فاتورة</h2></div>
-                                    <div className="flex-1 flex items-center justify-end gap-2">
-                                        <span className="font-bold text-gray-700">رقم الفاتورة:</span>
-                                        <input type="text" value={activeInvoice.invoiceNumber} onChange={(e) => handleEditorDataChange('invoiceNumber', e.target.value)} className="w-24 text-left font-mono outline-none bg-transparent font-bold" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="px-10 mt-6 relative z-10">
-                                <div className="text-center font-bold text-lg mb-4 flex justify-center items-center gap-2">
-                                    <span>نظام مقاولة خاص لـ:</span>
-                                    <input type="text" value={activeInvoice.clientName} onChange={(e) => handleEditorDataChange('clientName', e.target.value)} className="border-b border-gray-400 outline-none text-center min-w-[250px] bg-transparent text-[#2d206b] font-bold" placeholder="اكتب اسم العميل هنا..." />
-                                </div>
-                                <div className="bg-gray-100 border border-gray-300 rounded p-3 text-center mb-6">
-                                    <input type="text" value={activeInvoice.projectName} onChange={(e) => handleEditorDataChange('projectName', e.target.value)} className="w-full text-center outline-none bg-transparent font-bold text-gray-800" placeholder="وصف المشروع أو التفاصيل هنا..." />
-                                </div>
-                            </div>
-
-                            <div className="px-10 relative z-10 mb-4">
-                                <table className="w-full border-collapse border border-gray-400 text-sm text-center">
-                                    <thead>
-                                        <tr className="bg-[#eeecf5] border-b border-gray-400">
-                                            <th className="py-2 w-12 font-bold text-[#2d206b] border-l border-gray-400">م</th>
-                                            <th className="py-2 font-bold text-[#2d206b] border-l border-gray-400">الوصف والبيان</th>
-                                            <th className="py-2 w-24 font-bold text-[#2d206b] border-l border-gray-400">الكمية</th>
-                                            <th className="py-2 w-32 font-bold text-[#2d206b] border-l border-gray-400">سعر الوحدة</th>
-                                            <th className="py-2 w-40 font-bold text-[#2d206b] border-l border-gray-400">الجملة</th>
-                                            <th className="w-10 print-hidden"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {activeInvoice.items.map((item, index) => (
-                                            <tr key={item.id} className="border-b border-gray-300 hover:bg-gray-50">
-                                                <td className="py-2 bg-gray-100 font-bold border-l border-gray-400">{index + 1}</td>
-                                                <td className="p-1 text-right border-l border-gray-400"><input type="text" value={item.description} onChange={(e) => handleEditorItemChange(item.id, 'description', e.target.value)} className="w-full outline-none bg-transparent px-2" placeholder="وصف العمل..." /></td>
-                                                <td className="p-1 border-l border-gray-400"><input type="number" value={item.qty === 0 ? '' : item.qty} onChange={(e) => handleEditorItemChange(item.id, 'qty', e.target.value)} className="w-full outline-none text-center bg-transparent" placeholder="0" /></td>
-                                                <td className="p-1 bg-gray-50 border-l border-gray-400"><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => handleEditorItemChange(item.id, 'price', e.target.value)} className="w-full outline-none text-center bg-transparent" placeholder="0" /></td>
-                                                <td className="py-2 font-bold bg-gray-100 border-l border-gray-400">{item.qty * item.price === 0 ? '-' : formatNumber(item.qty * item.price)}</td>
-                                                <td className="print-hidden text-center"><button onClick={() => removeEditorItem(item.id)} className="text-red-500 hover:text-red-700"><IconTrash /></button></td>
-                                            </tr>
-                                        ))}
-                                        <tr className="bg-[#eeecf5] font-bold text-lg border-t-2 border-gray-400">
-                                            <td colSpan="4" className="py-3 text-center text-[#2d206b] border-l border-gray-400">الإجمالي الكلي</td>
-                                            <td className="py-3 text-center border-l border-gray-400">{subTotal === 0 ? '-' : formatNumber(subTotal)}</td>
-                                            <td className="print-hidden"></td>
-                                        </tr>
-                                        <tr className={`font-bold ${activeInvoice.discountPercent === 0 ? 'print-hidden' : 'bg-red-50 text-red-600'}`}>
-                                            <td colSpan="3" className="py-2 text-left px-4 border-l border-gray-400">الخصم المئوي %</td>
-                                            <td className="p-1 bg-white border-l border-gray-400">
-                                                <div className="flex items-center justify-center gap-1">
-                                                    <input type="number" value={activeInvoice.discountPercent === 0 ? '' : activeInvoice.discountPercent} onChange={(e) => handleEditorDataChange('discountPercent', Number(e.target.value))} className="w-12 outline-none text-center bg-transparent text-red-600 font-bold border-b border-dashed border-red-300" placeholder="0" />
-                                                    <span>%</span>
-                                                </div>
-                                            </td>
-                                            <td className="py-2 text-center bg-red-50 border-l border-gray-400">{activeInvoice.discountPercent > 0 ? `- ${formatNumber(discountAmount)}` : '-'}</td>
-                                            <td className="print-hidden"></td>
-                                        </tr>
-                                        {activeInvoice.discountPercent > 0 && (
-                                            <tr className="bg-[#2d206b] text-white font-bold text-lg">
-                                                <td colSpan="4" className="py-3 text-center border-l border-gray-400">الصافي النهائي</td>
-                                                <td className="py-3 text-center border-l border-gray-400">{formatNumber(total)}</td>
-                                                <td className="print-hidden"></td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                                <button onClick={addEditorItem} className="print-hidden flex items-center gap-1 text-[#4b3b94] font-bold my-2"><IconPlus /> إضافة صنف</button>
-                            </div>
-
-                            <div className="px-10 mt-4 mb-8 flex justify-between items-start relative z-10 gap-6">
-                                <div className="flex-[1.5]">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-sm font-bold text-gray-700">العملة:</span>
-                                        <input type="text" value={activeInvoice.currency} onChange={(e) => handleEditorDataChange('currency', e.target.value)} className="w-32 font-bold outline-none bg-transparent" />
-                                    </div>
-                                    <div className="mt-4">
-                                        <h4 className="font-bold text-[#2d206b] mb-2">ملاحظات وتنبيهات:</h4>
-                                        <textarea value={activeInvoice.notes} onChange={(e) => handleEditorDataChange('notes', e.target.value)} className="w-full h-20 outline-none border border-transparent p-2 bg-transparent resize-none text-sm font-bold text-gray-700 leading-relaxed" />
-                                    </div>
-                                </div>
-                                <div className="flex-1 flex justify-center items-center gap-6 mt-6 opacity-90">
-                                    {/* توليد الباركود التفاعلي الذكي والآمن من روابطكم مباشرة */}
-                                    <SmartQRCode dataUrl="https://facebook.com/AmiasContracting" label="Facebook" />
-                                    <SmartQRCode dataUrl="https://tiktok.com/@AmiasContracting" label="TikTok" />
-                                </div>
-                                <div className="flex-[0.8] flex flex-col items-center justify-center mt-2">
-                                    <div className="transform -rotate-12"><AmiasStamp className="w-32 h-32" /></div>
-                                    <p className="text-xs text-gray-500 mt-2 font-bold">الختم والتوقيع</p>
-                                </div>
-                            </div>
-
-                            <div className="relative w-full mt-auto">
-                                <div className="bg-[#2d206b] text-white py-3 px-8 flex justify-between items-center text-sm" dir="ltr">
-                                    <div className="flex items-center gap-2 font-bold"><IconPhone /> <span>0963811138 - 0991090140</span></div>
-                                    <div className="flex items-center gap-2 font-bold"><IconHash /> <span>AmiasContracting</span></div>
-                                    <div className="flex items-center gap-2 font-bold"><IconMail /> <span>amiasgc@gmail.com</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
-            return (
-                <div>
-                    {modal.show && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 p-4">
-                            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm border-t-8 border-[#2d206b] text-center">
-                                <h3 className="text-lg font-bold text-[#2d206b] mb-2">{modal.title}</h3>
-                                <p className="text-sm text-gray-600 font-bold mb-4">{modal.message}</p>
-                                <button onClick={() => setModal({ ...modal, show: false })} className="bg-[#2d206b] text-white font-bold py-2 px-6 rounded-lg shadow text-sm">حسناً</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
+        // دالة المراقبة: الواجهة لن تبدأ إلا بعد إعطاء السيرفر إشارة الجاهزية التامة لتفادي أي شاشات بيضاء
+        if (window.FirebaseSDK) {
+            bootApplication();
+        } else {
+            window.addEventListener('FirebaseLoaded', bootApplication);
         }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
     </script>
 </body>
 </html>
