@@ -8,7 +8,7 @@
     <!-- تحميل Tailwind للتصميم -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- تحميل فايربيس V8 الكلاسيكي (بدون أي تعقيد) -->
+    <!-- تحميل فايربيس V8 الكلاسيكي -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -33,7 +33,6 @@
 </head>
 <body class="text-gray-800">
 
-    <!-- الحاوية الرئيسية -->
     <div id="app-container">
         
         <!-- 1. شاشة تسجيل الدخول -->
@@ -133,73 +132,90 @@
             
             <datalist id="predefined-items"></datalist>
 
+            <!-- الأزرار العائمة (تم دمج الحفظ والطباعة في زر واحد) -->
             <div class="fixed top-4 left-4 z-50 print-hidden flex flex-col gap-3">
-                <button onclick="window.print()" class="bg-[#2d206b] text-white p-4 rounded-full shadow-lg font-bold">طباعة</button>
-                <button onclick="saveInvoice()" class="bg-green-600 text-white p-4 rounded-full shadow-lg font-bold">حفظ بالسحابة</button>
-                <button onclick="switchView('dash-view')" class="bg-gray-600 text-white p-4 rounded-full shadow-lg font-bold">رجوع</button>
+                <button onclick="saveAndPrint()" class="bg-[#2d206b] text-white p-4 rounded-full shadow-lg font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform" title="حفظ وطباعة الفاتورة">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    طباعة وحفظ
+                </button>
+                <button onclick="switchView('dash-view')" class="bg-gray-600 text-white p-4 rounded-full shadow-lg font-bold flex items-center justify-center hover:scale-105 transition-transform">رجوع</button>
             </div>
 
-            <div class="w-full max-w-[210mm] bg-white shadow-2xl print:shadow-none relative flex flex-col mx-auto font-sans p-10 print-view">
+            <!-- الورقة A4 -->
+            <div class="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-2xl print:shadow-none relative flex flex-col mx-auto font-sans p-10 print-view">
                 
-                <div class="flex justify-between items-center border-b-2 border-[#2d206b] pb-4 mb-6">
-                    <div class="text-right">
-                        <h1 class="text-3xl font-black text-[#2d206b] mb-1">أمياس للمقاولات</h1>
-                        <p class="text-sm font-bold text-gray-600">طاقة شمسية - مقاولات عامة</p>
-                    </div>
-                    <div class="text-center">
-                        <h2 class="text-2xl font-black bg-[#2d206b] text-white px-6 py-1 rounded-full">فاتورة</h2>
-                    </div>
-                    <div class="text-left font-bold text-gray-700" dir="ltr">
-                        <div class="text-2xl font-black text-[#2d206b] font-cursive mb-1">Amias Contracting</div>
-                        <div class="flex justify-end gap-2 text-sm">NO: <input type="text" id="inv-num" class="w-16 outline-none bg-transparent font-mono no-border-print border-b" onchange="updateInvData('invNum', this.value)"/></div>
-                        <div class="flex justify-end gap-2 text-sm">Date: <input type="text" id="inv-date" class="w-24 outline-none bg-transparent no-border-print border-b text-right" onchange="updateInvData('dateStr', this.value)"/></div>
-                    </div>
-                </div>
+                <!-- الشعار الشفاف (العلامة المائية) -->
+                <!-- تأكد من رفع صورة اللوغو باسم logo.png في جيت هاب -->
+                <img src="logo.png" onerror="this.style.display='none'" class="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-[0.07] w-[70%] pointer-events-none z-0" alt="Watermark" />
 
-                <div class="mb-6 flex flex-col gap-3">
-                    <div class="font-bold flex items-end"><span class="w-24 text-[#2d206b]">السيد/ة:</span><input type="text" id="inv-client" class="border-b-2 border-gray-400 outline-none flex-1 font-black text-lg no-border-print px-2" onchange="updateInvData('client', this.value)"/></div>
-                    <div class="font-bold flex items-end"><span class="w-24 text-[#2d206b]">المشروع:</span><input type="text" id="inv-project" class="border-b-2 border-gray-400 outline-none flex-1 font-bold no-border-print px-2" onchange="updateInvData('project', this.value)"/></div>
-                </div>
-
-                <table class="w-full text-center border-2 border-[#2d206b] mb-4">
-                    <thead class="bg-[#2d206b] text-white font-bold">
-                        <tr><th class="p-2 border border-gray-400 w-10">م</th><th class="p-2 border border-gray-400">البيان</th><th class="p-2 border border-gray-400 w-20">الكمية</th><th class="p-2 border border-gray-400 w-28">السعر</th><th class="p-2 border border-gray-400 w-32">الإجمالي</th><th class="print-hidden w-8 bg-gray-100"></th></tr>
-                    </thead>
-                    <tbody id="invoice-rows-body">
-                        <!-- Rows injected here -->
-                    </tbody>
-                </table>
-                <button onclick="addInvoiceRow()" class="print-hidden text-blue-600 font-bold mb-4 text-sm w-fit">+ إضافة سطر</button>
-
-                <div class="flex justify-between mb-8 mt-2 gap-4">
-                    <div class="flex flex-col gap-4 flex-1">
-                        <div class="font-bold flex items-center gap-2 text-[#2d206b]">العملة: <input id="inv-curr" class="w-28 bg-transparent outline-none border-b-2 border-gray-400 no-border-print font-black" onchange="updateInvData('curr', this.value)"/></div>
-                        <div class="text-sm font-bold text-gray-700">
-                            <p class="text-[#2d206b] mb-1">ملاحظات وشروط:</p>
-                            <textarea id="inv-note" class="w-full h-20 outline-none bg-transparent resize-none border border-gray-200 p-2 rounded no-border-print" onchange="updateInvData('note', this.value)"></textarea>
+                <div class="relative z-10 flex flex-col h-full">
+                    <!-- الترويسة -->
+                    <div class="flex justify-between items-center border-b-2 border-[#2d206b] pb-4 mb-6">
+                        <div class="text-right">
+                            <h1 class="text-3xl font-black text-[#2d206b] mb-1">أمياس للمقاولات</h1>
+                            <p class="text-sm font-bold text-gray-600">طاقة شمسية - مقاولات عامة</p>
+                        </div>
+                        <div class="text-center">
+                            <h2 class="text-2xl font-black bg-[#2d206b] text-white px-6 py-1 rounded-full">فاتورة</h2>
+                        </div>
+                        <div class="text-left font-bold text-gray-700" dir="ltr">
+                            <div class="text-2xl font-black text-[#2d206b] font-cursive mb-1">Amias Contracting</div>
+                            <div class="flex justify-end gap-2 text-sm items-center">NO: <input type="text" id="inv-num" class="w-16 outline-none bg-transparent font-mono no-border-print border-b border-gray-300 text-center" onchange="updateInvData('invNum', this.value)"/></div>
+                            <div class="flex justify-end gap-2 text-sm items-center mt-1">Date: <input type="text" id="inv-date" class="w-24 outline-none bg-transparent no-border-print border-b border-gray-300 text-center" onchange="updateInvData('dateStr', this.value)"/></div>
                         </div>
                     </div>
-                    <div class="w-72 border-2 border-[#2d206b] rounded p-4 font-bold bg-gray-50 h-fit">
-                        <div class="flex justify-between mb-2"><span>الإجمالي:</span><span id="inv-subT">0</span></div>
-                        <div class="flex justify-between mb-2 text-red-600 border-b border-gray-300 pb-2"><span>الخصم %:</span><input type="number" id="inv-disc" class="w-16 text-center bg-transparent border-b border-red-300 outline-none no-border-print" onchange="updateInvData('disc', this.value)"/></div>
-                        <div class="flex justify-between text-xl text-[#2d206b] mt-2 font-black"><span>الصافي:</span><span id="inv-finalT">0</span></div>
-                    </div>
-                </div>
 
-                <div class="mt-auto flex justify-between items-center border-t-2 border-[#2d206b] pt-4">
-                    <div class="flex gap-4">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://facebook.com/AmiasContracting" class="w-16 h-16 border p-1 rounded" alt="FB">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://tiktok.com/@AmiasContracting" class="w-16 h-16 border p-1 rounded" alt="TK">
+                    <!-- بيانات العميل -->
+                    <div class="mb-6 flex flex-col gap-3">
+                        <div class="font-bold flex items-end"><span class="w-24 text-[#2d206b]">السيد/ة:</span><input type="text" id="inv-client" class="border-b-2 border-gray-400 outline-none flex-1 font-black text-lg no-border-print px-2 bg-transparent" placeholder="اسم العميل..." onchange="updateInvData('client', this.value)"/></div>
+                        <div class="font-bold flex items-end"><span class="w-24 text-[#2d206b]">المشروع:</span><input type="text" id="inv-project" class="border-b-2 border-gray-400 outline-none flex-1 font-bold no-border-print px-2 bg-transparent" placeholder="تفاصيل المشروع..." onchange="updateInvData('project', this.value)"/></div>
                     </div>
-                    <div class="text-center relative">
-                        <div class="w-24 h-24 border-4 border-[#2d206b] rounded-full flex items-center justify-center text-[#2d206b] font-black transform -rotate-12 opacity-80 text-xs text-center p-2 mx-auto">أمياس<br>للمقاولات<br>س/ت 159162</div>
-                        <p class="font-bold text-[#2d206b] text-xs mt-2">توقيع وختم الإدارة</p>
+
+                    <!-- الجدول -->
+                    <table class="w-full text-center border-2 border-[#2d206b] mb-4 bg-white/80">
+                        <thead class="bg-[#2d206b] text-white font-bold">
+                            <tr><th class="p-2 border border-gray-400 w-10">م</th><th class="p-2 border border-gray-400">البيان</th><th class="p-2 border border-gray-400 w-20">الكمية</th><th class="p-2 border border-gray-400 w-28">السعر</th><th class="p-2 border border-gray-400 w-32">الإجمالي</th><th class="print-hidden w-8 bg-gray-100"></th></tr>
+                        </thead>
+                        <tbody id="invoice-rows-body">
+                            <!-- Rows injected here -->
+                        </tbody>
+                    </table>
+                    <button onclick="addInvoiceRow()" class="print-hidden text-blue-600 font-bold mb-4 text-sm w-fit">+ إضافة سطر</button>
+
+                    <!-- الإجماليات والملاحظات -->
+                    <div class="flex justify-between mb-8 mt-2 gap-4">
+                        <div class="flex flex-col gap-4 flex-1">
+                            <div class="font-bold flex items-center gap-2 text-[#2d206b]">العملة: <input id="inv-curr" class="w-28 bg-transparent outline-none border-b-2 border-gray-400 no-border-print font-black px-2" onchange="updateInvData('curr', this.value)"/></div>
+                            <div class="text-sm font-bold text-gray-700">
+                                <p class="text-[#2d206b] mb-1">ملاحظات وشروط:</p>
+                                <textarea id="inv-note" class="w-full h-20 outline-none bg-transparent resize-none border border-gray-300 p-2 rounded no-border-print" onchange="updateInvData('note', this.value)"></textarea>
+                            </div>
+                        </div>
+                        <div class="w-72 border-2 border-[#2d206b] rounded p-4 font-bold bg-white/90 h-fit">
+                            <div class="flex justify-between mb-2"><span>الإجمالي:</span><span id="inv-subT">0</span></div>
+                            <div class="flex justify-between mb-2 text-red-600 border-b border-gray-300 pb-2"><span>الخصم %:</span><input type="number" id="inv-disc" class="w-16 text-center bg-transparent border-b border-red-300 outline-none no-border-print" onchange="updateInvData('disc', this.value)"/></div>
+                            <div class="flex justify-between text-xl text-[#2d206b] mt-2 font-black"><span>الصافي:</span><span id="inv-finalT">0</span></div>
+                        </div>
                     </div>
-                </div>
-                <div class="bg-[#2d206b] text-white py-2 px-6 mt-4 flex justify-between text-xs font-bold rounded-b-lg" dir="ltr">
-                    <span>📞 0963811138 - 0991090140</span>
-                    <span>🌐 AmiasContracting</span>
-                    <span>✉️ amiasgc@gmail.com</span>
+
+                    <!-- التذييل والختم -->
+                    <div class="mt-auto flex justify-between items-center border-t-2 border-[#2d206b] pt-4 pb-2">
+                        <div class="flex gap-4">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://facebook.com/AmiasContracting" class="w-16 h-16 border p-1 rounded bg-white" alt="FB">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://tiktok.com/@AmiasContracting" class="w-16 h-16 border p-1 rounded bg-white" alt="TK">
+                        </div>
+                        <div class="text-center relative">
+                            <!-- الختم الحقيقي -->
+                            <!-- تأكد من رفع صورة الختم باسم stamp.png في جيت هاب -->
+                            <img src="stamp.png" onerror="this.style.display='none'" class="w-32 h-auto object-contain mx-auto transform -rotate-12 opacity-95 mix-blend-multiply" alt="ختم الشركة" />
+                            <p class="font-bold text-[#2d206b] text-xs mt-1">توقيع وختم الإدارة</p>
+                        </div>
+                    </div>
+                    <div class="bg-[#2d206b] text-white py-2 px-6 mt-2 flex justify-between text-xs font-bold rounded-b-lg" dir="ltr">
+                        <span>📞 0963811138 - 0991090140</span>
+                        <span>🌐 AmiasContracting</span>
+                        <span>✉️ amiasgc@gmail.com</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -214,7 +230,6 @@
         </div>
     </div>
 
-    <!-- الكود البرمجي النقي (بدون React) -->
     <script>
         // التهيئة السحابية
         const firebaseConfig = {
@@ -311,7 +326,7 @@
             renderTable();
         }
 
-        // رسم جدول الفواتير (لوحة التحكم)
+        // رسم جدول الفواتير
         function renderTable() {
             const tbody = document.getElementById('invoices-table-body');
             const search = document.getElementById('search-box').value.toLowerCase();
@@ -330,16 +345,16 @@
                     const finalT = subT - (subT * (Number(inv.disc) || 0) / 100);
                     totalS += finalT;
 
-                    let delBtn = currentUser.isAdmin ? `<button onclick="deleteInvoice('${inv.id}')" class="bg-red-500 text-white px-3 py-1 rounded text-xs font-bold">حذف</button>` : '';
+                    let delBtn = currentUser.isAdmin ? `<button onclick="deleteInvoice('${inv.id}')" class="bg-red-500 text-white px-3 py-1 rounded text-xs font-bold shadow">حذف</button>` : '';
 
                     tbody.innerHTML += `
                         <tr class="border-b hover:bg-gray-50">
-                            <td class="p-3 font-mono font-bold">${inv.invNum}</td>
+                            <td class="p-3 font-mono font-bold text-lg">${inv.invNum}</td>
                             <td class="p-3 font-bold text-[#2d206b]">${inv.client}</td>
                             <td class="p-3 text-gray-500">${inv.dateStr}</td>
                             <td class="p-3 font-black text-gray-800">${formatMoney(finalT)}</td>
                             <td class="p-3 flex justify-center gap-2">
-                                <button onclick="editInvoice('${inv.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold">عرض</button>
+                                <button onclick="editInvoice('${inv.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold shadow">عرض</button>
                                 ${delBtn}
                             </td>
                         </tr>
@@ -456,13 +471,13 @@
                 const rowTotal = Number(r.q) * Number(r.p);
                 subT += rowTotal;
                 tbody.innerHTML += `
-                    <tr class="border-b border-gray-300">
+                    <tr class="border-b border-gray-300 bg-white/80">
                         <td class="p-2 border border-gray-400 font-bold bg-gray-100">${idx + 1}</td>
-                        <td class="p-2 border border-gray-400"><input type="text" list="predefined-items" value="${r.desc}" onchange="updateRowData(${r.id}, 'desc', this.value)" placeholder="الصنف..." class="w-full outline-none font-bold text-gray-800 bg-transparent text-right"/></td>
-                        <td class="p-2 border border-gray-400"><input type="number" value="${r.q||''}" onchange="updateRowData(${r.id}, 'q', this.value)" class="w-full outline-none text-center bg-transparent"/></td>
-                        <td class="p-2 border border-gray-400"><input type="number" value="${r.p||''}" onchange="updateRowData(${r.id}, 'p', this.value)" class="w-full outline-none text-center bg-transparent"/></td>
-                        <td class="p-2 border border-gray-400 font-bold">${rowTotal === 0 ? '-' : formatMoney(rowTotal)}</td>
-                        <td class="print-hidden border border-gray-400"><button onclick="deleteInvoiceRow(${r.id})" class="text-red-500 font-bold px-2">X</button></td>
+                        <td class="p-2 border border-gray-400"><input type="text" list="predefined-items" value="${r.desc}" onchange="updateRowData(${r.id}, 'desc', this.value)" placeholder="الصنف..." class="w-full outline-none font-bold text-gray-800 bg-transparent text-right px-1"/></td>
+                        <td class="p-2 border border-gray-400"><input type="number" value="${r.q||''}" onchange="updateRowData(${r.id}, 'q', this.value)" class="w-full outline-none text-center bg-transparent font-bold"/></td>
+                        <td class="p-2 border border-gray-400"><input type="number" value="${r.p||''}" onchange="updateRowData(${r.id}, 'p', this.value)" class="w-full outline-none text-center bg-transparent font-bold"/></td>
+                        <td class="p-2 border border-gray-400 font-bold text-[#2d206b]">${rowTotal === 0 ? '-' : formatMoney(rowTotal)}</td>
+                        <td class="print-hidden border border-gray-400"><button onclick="deleteInvoiceRow(${r.id})" class="text-red-500 font-bold px-2 hover:bg-red-50 rounded">X</button></td>
                     </tr>
                 `;
             });
@@ -485,8 +500,9 @@
             renderInvoiceRows();
         }
 
-        function saveInvoice() {
-            if(!activeInvoice.client.trim()) return showAlert("يرجى كتابة اسم العميل أولاً");
+        // دالة الحفظ والطباعة المدمجة
+        function saveAndPrint() {
+            if(!activeInvoice.client.trim()) return showAlert("يرجى كتابة اسم العميل أولاً لحفظ وطباعة الفاتورة");
             
             const payload = { ...activeInvoice, timestamp: Date.now(), editor: currentUser.name };
             if(!payload.creator) payload.creator = currentUser.name;
@@ -494,14 +510,13 @@
 
             if (id) {
                 db.collection('amias_invoices').doc(id).set(dataToSave).then(() => {
-                    showAlert("تم تحديث الفاتورة بنجاح");
-                    switchView('dash-view');
-                });
+                    window.print(); // الطباعة بعد الحفظ السحابي
+                }).catch(e => showAlert('فشل الاتصال بالسيرفر أثناء الحفظ.'));
             } else {
-                db.collection('amias_invoices').add(dataToSave).then(() => {
-                    showAlert("تم حفظ الفاتورة السحابية بنجاح");
-                    switchView('dash-view');
-                });
+                db.collection('amias_invoices').add(dataToSave).then((docRef) => {
+                    activeInvoice.id = docRef.id; // تحديث الـ ID لمنع تكرار الفاتورة لو طبعها مرتين
+                    window.print(); // الطباعة بعد الحفظ السحابي
+                }).catch(e => showAlert('فشل الاتصال بالسيرفر أثناء الحفظ.'));
             }
         }
 
