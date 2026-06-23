@@ -5,19 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>فاتورة أمياس للمقاولات</title>
 
-    <script>
-        window.addEventListener('error', function(event) {
-            document.body.innerHTML = `
-                <div style="padding: 40px; background: #fee2e2; color: #991b1b; direction: ltr; text-align: left; font-family: monospace; height: 100vh;">
-                    <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 20px;">🚨 SYSTEM ERROR DETECTED</h1>
-                    <p><strong>Message:</strong> ${event.message}</p>
-                    <p><strong>File:</strong> ${event.filename}</p>
-                    <p><strong>Line:</strong> ${event.lineno}</p>
-                </div>
-            `;
-        });
-    </script>
-    
     <script src="https://cdn.tailwindcss.com"></script>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -37,19 +24,9 @@
             .print-hidden { display: none !important; }
             .print-view { display: block !important; width: 100% !important; }
             #editor-view { background: white !important; padding: 0 !important; }
-            .no-border-print { border: none !important; }
+            .no-border-print { border: none !important; border-bottom: 1px solid transparent !important; }
         }
         input::-webkit-calendar-picker-indicator { display: none !important; }
-        
-        /* فلاتر سحرية لتنظيف الختم والعلامة المائية برمجياً */
-        .magic-stamp {
-            mix-blend-mode: multiply;
-            filter: contrast(1.5) brightness(1.1) saturate(1.2);
-        }
-        .magic-watermark {
-            mix-blend-mode: multiply;
-            filter: grayscale(100%) opacity(0.08);
-        }
     </style>
 </head>
 <body class="text-gray-800">
@@ -122,7 +99,6 @@
                             <tr><th class="p-3">رقم</th><th class="p-3">العميل</th><th class="p-3">التاريخ</th><th class="p-3">القيمة</th><th class="p-3">إجراء</th></tr>
                         </thead>
                         <tbody id="invoices-table-body" class="divide-y divide-gray-100">
-                            <!-- Invoices will be injected here via JS -->
                         </tbody>
                     </table>
                 </div>
@@ -141,9 +117,7 @@
                         <input type="text" id="new-item-input" placeholder="اسم الصنف الجديد..." class="flex-1 border-2 border-gray-300 rounded p-2 outline-none font-bold" />
                         <button onclick="addNewItem()" class="bg-green-600 text-white font-bold py-2 px-6 rounded">إضافة</button>
                     </div>
-                    <ul id="items-list-container" class="space-y-2">
-                        <!-- Items will be injected here via JS -->
-                    </ul>
+                    <ul id="items-list-container" class="space-y-2"></ul>
                 </div>
             </div>
         </div>
@@ -155,8 +129,7 @@
 
             <!-- الأزرار العائمة -->
             <div class="fixed top-4 left-4 z-50 print-hidden flex flex-col gap-3">
-                <!-- زر الطباعة والحفظ المدمج -->
-                <button onclick="saveAndPrint()" class="bg-green-600 text-white px-6 py-4 rounded-full shadow-lg font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform" title="حفظ وطباعة الفاتورة">
+                <button onclick="saveAndPrint()" class="bg-[#2d206b] text-white px-6 py-4 rounded-full shadow-lg font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform" title="حفظ وطباعة الفاتورة">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                     طباعة وحفظ
                 </button>
@@ -166,36 +139,41 @@
             <!-- الورقة A4 -->
             <div class="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-2xl print:shadow-none relative flex flex-col mx-auto font-sans p-10 print-view">
                 
-                <!-- العلامة المائية السحرية (يقرأ png أو jpg) -->
-                <img src="logo.png" onerror="this.onerror=null; this.src='logo.jpg';" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[75%] pointer-events-none z-0 magic-watermark" alt="Watermark" />
+                <!-- العلامة المائية: تم زيادة الوضوح إلى 15% (opacity-15) -->
+                <img src="logo.png" onerror="this.onerror=null; this.src='logo.jpg';" class="absolute top-[45%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[70%] opacity-15 pointer-events-none z-0" alt="Watermark" />
 
                 <div class="relative z-10 flex flex-col h-full">
-                    <!-- الترويسة -->
-                    <div class="flex justify-between items-center border-b-2 border-[#2d206b] pb-4 mb-6">
-                        <div class="text-right">
-                            <h1 class="text-3xl font-black text-[#2d206b] mb-1">أمياس للمقاولات</h1>
-                            <p class="text-sm font-bold text-gray-600">طاقة شمسية - مقاولات عامة</p>
+                    
+                    <!-- الترويسة الجديدة (زي التصميم القديم بالضبط) -->
+                    <div class="flex justify-between items-center border-b-2 border-gray-300 pb-4 mb-6">
+                        <!-- اليمين -->
+                        <div class="text-right w-1/3">
+                            <h1 class="text-2xl font-black text-[#2d206b] mb-1">أمياس للمقاولات</h1>
+                            <p class="text-xs font-bold text-gray-600">طاقة شمسية - مقاولات عامة</p>
                         </div>
-                        <div class="text-center">
-                            <h2 class="text-2xl font-black bg-[#2d206b] text-white px-6 py-1 rounded-full">فاتورة</h2>
+                        <!-- الوسط (اللوجو تحته الفاتورة) -->
+                        <div class="text-center w-1/3 flex flex-col items-center justify-center">
+                            <img src="logo.png" onerror="this.onerror=null; this.src='logo.jpg';" class="w-28 h-auto mb-2 object-contain" alt="Logo" />
+                            <h2 class="text-lg font-black bg-[#2d206b] text-white px-6 py-1 rounded-full">فاتورة</h2>
                         </div>
-                        <div class="text-left font-bold text-gray-700" dir="ltr">
-                            <div class="text-2xl font-black text-[#2d206b] font-cursive mb-1">Amias Contracting</div>
+                        <!-- اليسار -->
+                        <div class="text-left font-bold text-gray-700 w-1/3" dir="ltr">
+                            <div class="text-xl font-black text-[#2d206b] font-cursive mb-2">Amias Contracting</div>
                             <div class="flex justify-end gap-2 text-sm items-center">NO: <input type="text" id="inv-num" class="w-16 outline-none bg-transparent font-mono no-border-print border-b border-gray-300 text-center" onchange="updateInvData('invNum', this.value)"/></div>
                             <div class="flex justify-end gap-2 text-sm items-center mt-1">Date: <input type="text" id="inv-date" class="w-24 outline-none bg-transparent no-border-print border-b border-gray-300 text-center" onchange="updateInvData('dateStr', this.value)"/></div>
                         </div>
                     </div>
 
                     <!-- بيانات العميل -->
-                    <div class="mb-6 flex flex-col gap-3">
-                        <div class="font-bold flex items-end"><span class="w-24 text-[#2d206b]">السيد/ة:</span><input type="text" id="inv-client" class="border-b-2 border-gray-400 outline-none flex-1 font-black text-lg no-border-print px-2 bg-transparent" placeholder="اسم العميل..." onchange="updateInvData('client', this.value)"/></div>
-                        <div class="font-bold flex items-end"><span class="w-24 text-[#2d206b]">المشروع:</span><input type="text" id="inv-project" class="border-b-2 border-gray-400 outline-none flex-1 font-bold no-border-print px-2 bg-transparent" placeholder="تفاصيل المشروع..." onchange="updateInvData('project', this.value)"/></div>
+                    <div class="mb-6 flex flex-col gap-4">
+                        <div class="font-bold flex items-end"><span class="w-24 text-gray-800">السيد/ة:</span><input type="text" id="inv-client" class="border-b border-gray-400 outline-none flex-1 font-bold text-lg no-border-print px-2 bg-transparent" onchange="updateInvData('client', this.value)"/></div>
+                        <div class="font-bold flex items-end"><span class="w-24 text-gray-800">المشروع:</span><input type="text" id="inv-project" class="border-b border-gray-400 outline-none flex-1 font-bold no-border-print px-2 bg-transparent" onchange="updateInvData('project', this.value)"/></div>
                     </div>
 
                     <!-- الجدول -->
-                    <table class="w-full text-center border-2 border-[#2d206b] mb-4 bg-white/70">
+                    <table class="w-full text-center border border-gray-400 mb-4 bg-white/60">
                         <thead class="bg-[#2d206b] text-white font-bold">
-                            <tr><th class="p-2 border border-gray-400 w-10">م</th><th class="p-2 border border-gray-400">البيان</th><th class="p-2 border border-gray-400 w-20">الكمية</th><th class="p-2 border border-gray-400 w-28">السعر</th><th class="p-2 border border-gray-400 w-32">الإجمالي</th><th class="print-hidden w-8 bg-gray-100"></th></tr>
+                            <tr><th class="p-2 border border-gray-400 w-10">م</th><th class="p-2 border border-gray-400">البيان</th><th class="p-2 border border-gray-400 w-24">الكمية</th><th class="p-2 border border-gray-400 w-28">السعر</th><th class="p-2 border border-gray-400 w-32">الإجمالي</th><th class="print-hidden w-8 bg-gray-100"></th></tr>
                         </thead>
                         <tbody id="invoice-rows-body">
                             <!-- Rows injected here -->
@@ -203,39 +181,44 @@
                     </table>
                     <button onclick="addInvoiceRow()" class="print-hidden text-blue-600 font-bold mb-4 text-sm w-fit">+ إضافة سطر</button>
 
-                    <!-- الإجماليات والملاحظات -->
-                    <div class="flex justify-between mb-8 mt-2 gap-4">
+                    <!-- الإجماليات والملاحظات (زي ترتيب صورتك) -->
+                    <div class="flex justify-between mb-8 mt-4 gap-8">
+                        <!-- اليمين (الملاحظات والعملة) -->
                         <div class="flex flex-col gap-4 flex-1">
-                            <div class="font-bold flex items-center gap-2 text-[#2d206b]">العملة: <input id="inv-curr" class="w-28 bg-transparent outline-none border-b-2 border-gray-400 no-border-print font-black px-2" onchange="updateInvData('curr', this.value)"/></div>
+                            <div class="font-bold flex items-center gap-2 text-gray-800 border-b border-gray-300 pb-2 w-fit">العملة: <input id="inv-curr" class="w-28 bg-transparent outline-none no-border-print font-bold" onchange="updateInvData('curr', this.value)"/></div>
                             <div class="text-sm font-bold text-gray-700">
-                                <p class="text-[#2d206b] mb-1">ملاحظات وشروط:</p>
-                                <textarea id="inv-note" class="w-full h-20 outline-none bg-transparent resize-none border border-gray-300 p-2 rounded no-border-print" onchange="updateInvData('note', this.value)"></textarea>
+                                <p class="mb-1 text-gray-800">ملاحظات وشروط:</p>
+                                <textarea id="inv-note" class="w-full h-24 outline-none bg-transparent resize-none border border-transparent hover:border-gray-300 focus:border-gray-300 p-1 no-border-print" onchange="updateInvData('note', this.value)"></textarea>
                             </div>
                         </div>
-                        <div class="w-72 border-2 border-[#2d206b] rounded p-4 font-bold bg-white/90 h-fit">
-                            <div class="flex justify-between mb-2"><span>الإجمالي:</span><span id="inv-subT">0</span></div>
-                            <div class="flex justify-between mb-2 text-red-600 border-b border-gray-300 pb-2"><span>الخصم %:</span><input type="number" id="inv-disc" class="w-16 text-center bg-transparent border-b border-red-300 outline-none no-border-print" onchange="updateInvData('disc', this.value)"/></div>
-                            <div class="flex justify-between text-xl text-[#2d206b] mt-2 font-black"><span>الصافي:</span><span id="inv-finalT">0</span></div>
+                        <!-- اليسار (مربع الإجمالي) -->
+                        <div class="w-64 border border-gray-800 rounded p-4 font-bold bg-white/80 h-fit">
+                            <div class="flex justify-between mb-3 text-gray-800"><span>الإجمالي:</span><span id="inv-subT">0</span></div>
+                            <div class="flex justify-between mb-3 text-red-600 border-b border-gray-300 pb-3"><span>الخصم %:</span><input type="number" id="inv-disc" class="w-16 text-center bg-transparent border-b border-red-300 outline-none no-border-print" onchange="updateInvData('disc', this.value)"/></div>
+                            <div class="flex justify-between text-lg text-gray-900 mt-2 font-black"><span>الصافي:</span><span id="inv-finalT">0</span></div>
                         </div>
                     </div>
 
                     <!-- التذييل والختم -->
-                    <div class="mt-auto flex justify-between items-center border-t-2 border-[#2d206b] pt-4 pb-2">
-                        <div class="flex gap-4">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://facebook.com/AmiasContracting" class="w-16 h-16 border p-1 rounded bg-white" alt="FB">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://tiktok.com/@AmiasContracting" class="w-16 h-16 border p-1 rounded bg-white" alt="TK">
+                    <div class="mt-auto border-t border-gray-400 pt-6">
+                        <div class="flex justify-between items-end">
+                            <div class="text-center relative mr-8">
+                                <!-- الختم النظيف المرفوع بدون أي فلاتر -->
+                                <img src="stamp.png" onerror="this.onerror=null; this.src='stamp.jpg';" class="w-36 h-auto object-contain mx-auto transform -rotate-12" alt="ختم الشركة" />
+                                <p class="font-bold text-gray-800 text-xs mt-2">توقيع وختم الإدارة</p>
+                            </div>
+                            <div class="flex gap-4">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://facebook.com/AmiasContracting" class="w-16 h-16 border p-1 rounded bg-white" alt="FB">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://tiktok.com/@AmiasContracting" class="w-16 h-16 border p-1 rounded bg-white" alt="TK">
+                            </div>
                         </div>
-                        <div class="text-center relative">
-                            <!-- الختم السحري (يقرأ png أو jpg وينظف الخلفية برمجياً) -->
-                            <img src="stamp.png" onerror="this.onerror=null; this.src='stamp.jpg';" class="w-40 h-auto object-contain mx-auto transform -rotate-12 magic-stamp" alt="ختم الشركة" />
-                            <p class="font-bold text-[#2d206b] text-xs mt-1">توقيع وختم الإدارة</p>
+                        <div class="bg-[#2d206b] text-white py-2 px-6 mt-6 flex justify-between text-xs font-bold rounded-lg" dir="ltr">
+                            <span>📞 0963811138 - 0991090140</span>
+                            <span>🌐 AmiasContracting</span>
+                            <span>✉️ amiasgc@gmail.com</span>
                         </div>
                     </div>
-                    <div class="bg-[#2d206b] text-white py-2 px-6 mt-2 flex justify-between text-xs font-bold rounded-b-lg" dir="ltr">
-                        <span>📞 0963811138 - 0991090140</span>
-                        <span>🌐 AmiasContracting</span>
-                        <span>✉️ amiasgc@gmail.com</span>
-                    </div>
+
                 </div>
             </div>
         </div>
@@ -250,9 +233,7 @@
         </div>
     </div>
 
-    <!-- الكود البرمجي النقي -->
     <script>
-        // التهيئة السحابية
         const firebaseConfig = {
             apiKey: "AIzaSyAcEQy75s7qUAG07GvLXdmmvBwbyCNASww",
             authDomain: "amias-invoice.firebaseapp.com",
@@ -345,9 +326,7 @@
             const tbody = document.getElementById('invoices-table-body');
             const search = document.getElementById('search-box').value.toLowerCase();
             tbody.innerHTML = '';
-            
-            let totalS = 0;
-            let count = 0;
+            let totalS = 0, count = 0;
 
             allInvoices.forEach(inv => {
                 const isMine = currentUser.isAdmin || inv.creator === currentUser.name;
@@ -377,7 +356,6 @@
             });
 
             if(count === 0) tbody.innerHTML = `<tr><td colSpan="5" class="p-6 font-bold text-gray-400">لا توجد فواتير</td></tr>`;
-            
             document.getElementById('dash-inv-count').innerText = count;
             document.getElementById('dash-total-sales').innerText = formatMoney(totalS) + ' ج.س';
         }
@@ -483,12 +461,12 @@
                 const rowTotal = Number(r.q) * Number(r.p);
                 subT += rowTotal;
                 tbody.innerHTML += `
-                    <tr class="border-b border-gray-300 bg-white/70">
+                    <tr class="border-b border-gray-300 bg-white/60">
                         <td class="p-2 border border-gray-400 font-bold bg-gray-100">${idx + 1}</td>
-                        <td class="p-2 border border-gray-400"><input type="text" list="predefined-items" value="${r.desc}" onchange="updateRowData(${r.id}, 'desc', this.value)" placeholder="الصنف..." class="w-full outline-none font-bold text-gray-800 bg-transparent text-right px-1"/></td>
+                        <td class="p-2 border border-gray-400"><input type="text" list="predefined-items" value="${r.desc}" onchange="updateRowData(${r.id}, 'desc', this.value)" class="w-full outline-none font-bold text-gray-800 bg-transparent text-right px-1"/></td>
                         <td class="p-2 border border-gray-400"><input type="number" value="${r.q||''}" onchange="updateRowData(${r.id}, 'q', this.value)" class="w-full outline-none text-center bg-transparent font-bold"/></td>
                         <td class="p-2 border border-gray-400"><input type="number" value="${r.p||''}" onchange="updateRowData(${r.id}, 'p', this.value)" class="w-full outline-none text-center bg-transparent font-bold"/></td>
-                        <td class="p-2 border border-gray-400 font-bold text-[#2d206b]">${rowTotal === 0 ? '-' : formatMoney(rowTotal)}</td>
+                        <td class="p-2 border border-gray-400 font-bold text-gray-800">${rowTotal === 0 ? '-' : formatMoney(rowTotal)}</td>
                         <td class="print-hidden border border-gray-400"><button onclick="deleteInvoiceRow(${r.id})" class="text-red-500 font-bold px-2 hover:bg-red-50 rounded">X</button></td>
                     </tr>
                 `;
@@ -512,7 +490,6 @@
             renderInvoiceRows();
         }
 
-        // الحفظ التلقائي والطباعة معاً
         function saveAndPrint() {
             if(!activeInvoice.client.trim()) {
                 showAlert("عذراً، يجب إدخال اسم العميل أولاً لحفظ وطباعة الفاتورة.");
