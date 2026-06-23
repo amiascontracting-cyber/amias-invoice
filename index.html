@@ -5,10 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>فاتورة أمياس للمقاولات</title>
 
-    <!-- تحميل Tailwind للتصميم -->
+    <script>
+        window.addEventListener('error', function(event) {
+            document.body.innerHTML = `
+                <div style="padding: 40px; background: #fee2e2; color: #991b1b; direction: ltr; text-align: left; font-family: monospace; height: 100vh;">
+                    <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 20px;">🚨 SYSTEM ERROR DETECTED</h1>
+                    <p><strong>Message:</strong> ${event.message}</p>
+                    <p><strong>File:</strong> ${event.filename}</p>
+                    <p><strong>Line:</strong> ${event.lineno}</p>
+                </div>
+            `;
+        });
+    </script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- تحميل فايربيس V8 الكلاسيكي -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -29,6 +40,16 @@
             .no-border-print { border: none !important; }
         }
         input::-webkit-calendar-picker-indicator { display: none !important; }
+        
+        /* فلاتر سحرية لتنظيف الختم والعلامة المائية برمجياً */
+        .magic-stamp {
+            mix-blend-mode: multiply;
+            filter: contrast(1.5) brightness(1.1) saturate(1.2);
+        }
+        .magic-watermark {
+            mix-blend-mode: multiply;
+            filter: grayscale(100%) opacity(0.08);
+        }
     </style>
 </head>
 <body class="text-gray-800">
@@ -132,10 +153,11 @@
             
             <datalist id="predefined-items"></datalist>
 
-            <!-- الأزرار العائمة (تم دمج الحفظ والطباعة في زر واحد) -->
+            <!-- الأزرار العائمة -->
             <div class="fixed top-4 left-4 z-50 print-hidden flex flex-col gap-3">
-                <button onclick="saveAndPrint()" class="bg-[#2d206b] text-white p-4 rounded-full shadow-lg font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform" title="حفظ وطباعة الفاتورة">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                <!-- زر الطباعة والحفظ المدمج -->
+                <button onclick="saveAndPrint()" class="bg-green-600 text-white px-6 py-4 rounded-full shadow-lg font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform" title="حفظ وطباعة الفاتورة">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                     طباعة وحفظ
                 </button>
                 <button onclick="switchView('dash-view')" class="bg-gray-600 text-white p-4 rounded-full shadow-lg font-bold flex items-center justify-center hover:scale-105 transition-transform">رجوع</button>
@@ -144,9 +166,8 @@
             <!-- الورقة A4 -->
             <div class="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-2xl print:shadow-none relative flex flex-col mx-auto font-sans p-10 print-view">
                 
-                <!-- الشعار الشفاف (العلامة المائية) -->
-                <!-- تأكد من رفع صورة اللوغو باسم logo.png في جيت هاب -->
-                <img src="logo.png" onerror="this.style.display='none'" class="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-[0.07] w-[70%] pointer-events-none z-0" alt="Watermark" />
+                <!-- العلامة المائية السحرية (يقرأ png أو jpg) -->
+                <img src="logo.png" onerror="this.onerror=null; this.src='logo.jpg';" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[75%] pointer-events-none z-0 magic-watermark" alt="Watermark" />
 
                 <div class="relative z-10 flex flex-col h-full">
                     <!-- الترويسة -->
@@ -172,7 +193,7 @@
                     </div>
 
                     <!-- الجدول -->
-                    <table class="w-full text-center border-2 border-[#2d206b] mb-4 bg-white/80">
+                    <table class="w-full text-center border-2 border-[#2d206b] mb-4 bg-white/70">
                         <thead class="bg-[#2d206b] text-white font-bold">
                             <tr><th class="p-2 border border-gray-400 w-10">م</th><th class="p-2 border border-gray-400">البيان</th><th class="p-2 border border-gray-400 w-20">الكمية</th><th class="p-2 border border-gray-400 w-28">السعر</th><th class="p-2 border border-gray-400 w-32">الإجمالي</th><th class="print-hidden w-8 bg-gray-100"></th></tr>
                         </thead>
@@ -205,9 +226,8 @@
                             <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://tiktok.com/@AmiasContracting" class="w-16 h-16 border p-1 rounded bg-white" alt="TK">
                         </div>
                         <div class="text-center relative">
-                            <!-- الختم الحقيقي -->
-                            <!-- تأكد من رفع صورة الختم باسم stamp.png في جيت هاب -->
-                            <img src="stamp.png" onerror="this.style.display='none'" class="w-32 h-auto object-contain mx-auto transform -rotate-12 opacity-95 mix-blend-multiply" alt="ختم الشركة" />
+                            <!-- الختم السحري (يقرأ png أو jpg وينظف الخلفية برمجياً) -->
+                            <img src="stamp.png" onerror="this.onerror=null; this.src='stamp.jpg';" class="w-40 h-auto object-contain mx-auto transform -rotate-12 magic-stamp" alt="ختم الشركة" />
                             <p class="font-bold text-[#2d206b] text-xs mt-1">توقيع وختم الإدارة</p>
                         </div>
                     </div>
@@ -230,6 +250,7 @@
         </div>
     </div>
 
+    <!-- الكود البرمجي النقي -->
     <script>
         // التهيئة السحابية
         const firebaseConfig = {
@@ -244,7 +265,6 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // المتغيرات العامة
         const sysUsers = {
             "Yassin shrif": { pass: "amias2026", isAdmin: true },
             "المبيعات 1": { pass: "sales1", isAdmin: false },
@@ -255,7 +275,6 @@
         let allItems = [];
         let activeInvoice = {};
 
-        // الدوال الأساسية
         function switchView(viewId) {
             document.getElementById('login-view').classList.add('hidden-view');
             document.getElementById('dash-view').classList.add('hidden-view');
@@ -271,7 +290,6 @@
         function closeAlert() { document.getElementById('alert-modal').classList.add('hidden-view'); }
         function formatMoney(num) { return Number(num).toLocaleString('en-US'); }
 
-        // نظام تسجيل الدخول
         function doLogin() {
             const uname = document.getElementById('login-uname').value;
             const pwd = document.getElementById('login-pwd').value;
@@ -294,13 +312,12 @@
             switchView('login-view');
         }
 
-        // جلب البيانات من السحابة
         function fetchCloudData() {
             db.collection('amias_invoices').onSnapshot(snap => {
                 allInvoices = [];
                 snap.forEach(doc => allInvoices.push({ id: doc.id, ...doc.data() }));
                 allInvoices.sort((a, b) => b.timestamp - a.timestamp);
-                if(document.getElementById('dash-view').classList.contains('hidden-view') === false) renderTable();
+                if(!document.getElementById('dash-view').classList.contains('hidden-view')) renderTable();
             });
 
             db.collection('amias_settings').doc('items').onSnapshot(doc => {
@@ -312,10 +329,8 @@
             });
         }
 
-        // تشغيل التطبيق
         function initApp() {
             if (!currentUser) { switchView('login-view'); return; }
-            
             auth.signInAnonymously().catch(e => console.log(e));
             document.getElementById('dash-user-name').innerText = currentUser.name;
             if(currentUser.isAdmin) document.getElementById('btn-items-manager').classList.remove('hidden-view');
@@ -326,7 +341,6 @@
             renderTable();
         }
 
-        // رسم جدول الفواتير
         function renderTable() {
             const tbody = document.getElementById('invoices-table-body');
             const search = document.getElementById('search-box').value.toLowerCase();
@@ -368,7 +382,6 @@
             document.getElementById('dash-total-sales').innerText = formatMoney(totalS) + ' ج.س';
         }
 
-        // إدارة الأصناف
         function renderItemsList() {
             const list = document.getElementById('items-list-container');
             list.innerHTML = '';
@@ -405,7 +418,6 @@
             }
         }
 
-        // محرر الفاتورة
         function getNextInvoiceNumber() {
             if (allInvoices.length === 0) return "001";
             const numbers = allInvoices.map(inv => parseInt(inv.invNum, 10)).filter(n => !isNaN(n));
@@ -441,7 +453,7 @@
 
         function updateInvData(field, val) {
             activeInvoice[field] = val;
-            if(field === 'disc') renderInvoiceRows(); // recalculate totals
+            if(field === 'disc') renderInvoiceRows();
         }
 
         function updateRowData(id, field, val) {
@@ -471,7 +483,7 @@
                 const rowTotal = Number(r.q) * Number(r.p);
                 subT += rowTotal;
                 tbody.innerHTML += `
-                    <tr class="border-b border-gray-300 bg-white/80">
+                    <tr class="border-b border-gray-300 bg-white/70">
                         <td class="p-2 border border-gray-400 font-bold bg-gray-100">${idx + 1}</td>
                         <td class="p-2 border border-gray-400"><input type="text" list="predefined-items" value="${r.desc}" onchange="updateRowData(${r.id}, 'desc', this.value)" placeholder="الصنف..." class="w-full outline-none font-bold text-gray-800 bg-transparent text-right px-1"/></td>
                         <td class="p-2 border border-gray-400"><input type="number" value="${r.q||''}" onchange="updateRowData(${r.id}, 'q', this.value)" class="w-full outline-none text-center bg-transparent font-bold"/></td>
@@ -500,9 +512,12 @@
             renderInvoiceRows();
         }
 
-        // دالة الحفظ والطباعة المدمجة
+        // الحفظ التلقائي والطباعة معاً
         function saveAndPrint() {
-            if(!activeInvoice.client.trim()) return showAlert("يرجى كتابة اسم العميل أولاً لحفظ وطباعة الفاتورة");
+            if(!activeInvoice.client.trim()) {
+                showAlert("عذراً، يجب إدخال اسم العميل أولاً لحفظ وطباعة الفاتورة.");
+                return;
+            }
             
             const payload = { ...activeInvoice, timestamp: Date.now(), editor: currentUser.name };
             if(!payload.creator) payload.creator = currentUser.name;
@@ -510,13 +525,13 @@
 
             if (id) {
                 db.collection('amias_invoices').doc(id).set(dataToSave).then(() => {
-                    window.print(); // الطباعة بعد الحفظ السحابي
-                }).catch(e => showAlert('فشل الاتصال بالسيرفر أثناء الحفظ.'));
+                    window.print();
+                }).catch(e => showAlert('حدث خطأ في الاتصال بالإنترنت أثناء الحفظ.'));
             } else {
                 db.collection('amias_invoices').add(dataToSave).then((docRef) => {
-                    activeInvoice.id = docRef.id; // تحديث الـ ID لمنع تكرار الفاتورة لو طبعها مرتين
-                    window.print(); // الطباعة بعد الحفظ السحابي
-                }).catch(e => showAlert('فشل الاتصال بالسيرفر أثناء الحفظ.'));
+                    activeInvoice.id = docRef.id;
+                    window.print();
+                }).catch(e => showAlert('حدث خطأ في الاتصال بالإنترنت أثناء الحفظ.'));
             }
         }
 
@@ -526,7 +541,6 @@
             }
         }
 
-        // تشغيل مباشر
         window.onload = initApp;
 
     </script>
