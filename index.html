@@ -5,490 +5,514 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>فاتورة أمياس للمقاولات</title>
 
-    <!-- 💣 الكود النووي: لتدمير ومسح الذاكرة الخفية للمتصفح التي تسبب الشاشة البيضاء 💣 -->
-    <script>
-        try {
-            for (var key in localStorage) {
-                if (typeof key === 'string' && key.toLowerCase().includes('babel')) {
-                    localStorage.removeItem(key);
-                }
-            }
-        } catch(e) {}
-    </script>
-    
-    <!-- مكتبات التصميم -->
+    <!-- تحميل Tailwind للتصميم -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- فايربيس (الإصدار الثابت الكلاسيكي V8) -->
+    <!-- تحميل فايربيس V8 الكلاسيكي (بدون أي تعقيد) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-    <!-- مكتبات ريآكت -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
         .font-cursive { font-family: 'Dancing Script', cursive; }
+        .hidden-view { display: none !important; }
+        
         @media print {
             @page { margin: 0; size: A4 portrait; }
-            body, html { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: white !important; margin: 0 !important; padding: 0 !important; }
+            body, html { background: white !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;}
             .print-hidden { display: none !important; }
-            #root, #root > div { display: block !important; height: auto !important; min-height: auto !important; overflow: visible !important; }
+            .print-view { display: block !important; width: 100% !important; }
+            #editor-view { background: white !important; padding: 0 !important; }
+            .no-border-print { border: none !important; }
         }
         input::-webkit-calendar-picker-indicator { display: none !important; }
     </style>
 </head>
 <body class="text-gray-800">
-    
-    <div id="root">
-        <div style="display:flex; justify-content:center; align-items:center; height:100vh; background:#0f172a; flex-direction:column;">
-            <div style="border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid #fff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;"></div>
-            <h2 style="color:white; margin-top:20px; font-family:'Cairo', sans-serif; font-weight:bold;">جاري فحص وبناء النظام السحابي...</h2>
-            <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+
+    <!-- الحاوية الرئيسية -->
+    <div id="app-container">
+        
+        <!-- 1. شاشة تسجيل الدخول -->
+        <div id="login-view" class="min-h-screen flex items-center justify-center bg-slate-900 px-4 relative overflow-hidden hidden-view">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative z-10 border-t-8 border-[#2d206b]">
+                <div class="flex flex-col items-center mb-6">
+                    <h2 class="text-2xl font-black text-[#2d206b] mb-2 font-cursive">Amias Contracting</h2>
+                    <h2 class="text-xl font-bold text-gray-700">النظام السحابي الموحد</h2>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">المستخدم</label>
+                        <select id="login-uname" class="w-full border-2 border-gray-300 rounded p-2.5 outline-none font-bold">
+                            <option value="Yassin shrif">Yassin shrif (المدير)</option>
+                            <option value="المبيعات 1">المبيعات 1</option>
+                            <option value="المبيعات 2">المبيعات 2</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">كلمة المرور</label>
+                        <input type="password" id="login-pwd" class="w-full border-2 border-gray-300 rounded p-2.5 outline-none text-center font-mono font-bold" />
+                    </div>
+                    <div id="login-error" class="bg-red-50 text-red-600 text-sm font-bold p-3 rounded text-center border border-red-200 hidden-view"></div>
+                    <button onclick="doLogin()" class="w-full bg-[#2d206b] text-white font-bold py-3 rounded mt-4 hover:bg-[#1e144a]">تسجيل الدخول</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. شاشة لوحة التحكم -->
+        <div id="dash-view" class="min-h-screen bg-slate-100 p-4 md:p-8 hidden-view print-hidden">
+            <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow border-r-8 border-[#2d206b] mb-6 gap-4">
+                <div>
+                    <h1 class="text-xl font-bold text-[#2d206b]">فواتير أمياس للمقاولات</h1>
+                    <p class="text-xs font-bold text-gray-500">مرحباً: <span id="dash-user-name"></span></p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btn-items-manager" onclick="switchView('items-view')" class="bg-[#4b3b94] text-white font-bold py-2 px-4 rounded text-sm hidden-view">إدارة الأصناف</button>
+                    <button onclick="openNewInvoice()" class="bg-green-600 text-white font-bold py-2 px-4 rounded text-sm">+ فاتورة جديدة</button>
+                    <button onclick="doLogout()" class="bg-red-500 text-white font-bold py-2 px-4 rounded text-sm">خروج</button>
+                </div>
+            </div>
+
+            <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white p-6 rounded shadow border">
+                    <p class="text-sm font-bold text-gray-500">إجمالي المبيعات</p>
+                    <p class="text-2xl font-black text-[#2d206b] mt-2" id="dash-total-sales">0 ج.س</p>
+                </div>
+                <div class="bg-white p-6 rounded shadow border">
+                    <p class="text-sm font-bold text-gray-500">عدد الفواتير</p>
+                    <p class="text-2xl font-black text-green-600 mt-2" id="dash-inv-count">0</p>
+                </div>
+                <div class="bg-white p-6 rounded shadow border">
+                    <p class="text-sm font-bold text-gray-500">حالة السيرفر</p>
+                    <p class="text-sm font-bold text-blue-600 mt-4 flex items-center gap-2"><span class="w-2 h-2 bg-blue-600 rounded-full animate-ping"></span> متصل بالسحابة</p>
+                </div>
+            </div>
+
+            <div class="max-w-6xl mx-auto bg-white rounded-xl shadow border overflow-hidden">
+                <div class="p-4 bg-gray-50 border-b flex justify-between items-center">
+                    <h3 class="font-bold text-[#2d206b]">السجل السحابي</h3>
+                    <input type="text" id="search-box" onkeyup="renderTable()" placeholder="بحث..." class="border-2 p-2 rounded text-sm w-64 outline-none focus:border-[#2d206b]" />
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-center text-sm">
+                        <thead class="bg-[#eeecf5] text-[#2d206b] font-bold border-b">
+                            <tr><th class="p-3">رقم</th><th class="p-3">العميل</th><th class="p-3">التاريخ</th><th class="p-3">القيمة</th><th class="p-3">إجراء</th></tr>
+                        </thead>
+                        <tbody id="invoices-table-body" class="divide-y divide-gray-100">
+                            <!-- Invoices will be injected here via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. شاشة إدارة الأصناف -->
+        <div id="items-view" class="min-h-screen bg-slate-100 p-4 md:p-8 hidden-view print-hidden">
+            <div class="max-w-3xl mx-auto">
+                <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow border-r-8 border-[#2d206b] mb-6">
+                    <h1 class="text-xl font-bold text-[#2d206b]">إدارة أسماء الأصناف</h1>
+                    <button onclick="switchView('dash-view')" class="bg-gray-600 text-white font-bold py-2 px-4 rounded text-sm">رجوع</button>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow border">
+                    <div class="flex gap-2 mb-6">
+                        <input type="text" id="new-item-input" placeholder="اسم الصنف الجديد..." class="flex-1 border-2 border-gray-300 rounded p-2 outline-none font-bold" />
+                        <button onclick="addNewItem()" class="bg-green-600 text-white font-bold py-2 px-6 rounded">إضافة</button>
+                    </div>
+                    <ul id="items-list-container" class="space-y-2">
+                        <!-- Items will be injected here via JS -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. محرر الفاتورة والطباعة -->
+        <div id="editor-view" class="min-h-screen py-8 print:py-0 bg-gray-100 print:bg-white flex justify-center hidden-view">
+            
+            <datalist id="predefined-items"></datalist>
+
+            <div class="fixed top-4 left-4 z-50 print-hidden flex flex-col gap-3">
+                <button onclick="window.print()" class="bg-[#2d206b] text-white p-4 rounded-full shadow-lg font-bold">طباعة</button>
+                <button onclick="saveInvoice()" class="bg-green-600 text-white p-4 rounded-full shadow-lg font-bold">حفظ بالسحابة</button>
+                <button onclick="switchView('dash-view')" class="bg-gray-600 text-white p-4 rounded-full shadow-lg font-bold">رجوع</button>
+            </div>
+
+            <div class="w-full max-w-[210mm] bg-white shadow-2xl print:shadow-none relative flex flex-col mx-auto font-sans p-10 print-view">
+                
+                <div class="flex justify-between items-center border-b-2 border-[#2d206b] pb-4 mb-6">
+                    <div class="text-right">
+                        <h1 class="text-3xl font-black text-[#2d206b] mb-1">أمياس للمقاولات</h1>
+                        <p class="text-sm font-bold text-gray-600">طاقة شمسية - مقاولات عامة</p>
+                    </div>
+                    <div class="text-center">
+                        <h2 class="text-2xl font-black bg-[#2d206b] text-white px-6 py-1 rounded-full">فاتورة</h2>
+                    </div>
+                    <div class="text-left font-bold text-gray-700" dir="ltr">
+                        <div class="text-2xl font-black text-[#2d206b] font-cursive mb-1">Amias Contracting</div>
+                        <div class="flex justify-end gap-2 text-sm">NO: <input type="text" id="inv-num" class="w-16 outline-none bg-transparent font-mono no-border-print border-b" onchange="updateInvData('invNum', this.value)"/></div>
+                        <div class="flex justify-end gap-2 text-sm">Date: <input type="text" id="inv-date" class="w-24 outline-none bg-transparent no-border-print border-b text-right" onchange="updateInvData('dateStr', this.value)"/></div>
+                    </div>
+                </div>
+
+                <div class="mb-6 flex flex-col gap-3">
+                    <div class="font-bold flex items-end"><span class="w-24 text-[#2d206b]">السيد/ة:</span><input type="text" id="inv-client" class="border-b-2 border-gray-400 outline-none flex-1 font-black text-lg no-border-print px-2" onchange="updateInvData('client', this.value)"/></div>
+                    <div class="font-bold flex items-end"><span class="w-24 text-[#2d206b]">المشروع:</span><input type="text" id="inv-project" class="border-b-2 border-gray-400 outline-none flex-1 font-bold no-border-print px-2" onchange="updateInvData('project', this.value)"/></div>
+                </div>
+
+                <table class="w-full text-center border-2 border-[#2d206b] mb-4">
+                    <thead class="bg-[#2d206b] text-white font-bold">
+                        <tr><th class="p-2 border border-gray-400 w-10">م</th><th class="p-2 border border-gray-400">البيان</th><th class="p-2 border border-gray-400 w-20">الكمية</th><th class="p-2 border border-gray-400 w-28">السعر</th><th class="p-2 border border-gray-400 w-32">الإجمالي</th><th class="print-hidden w-8 bg-gray-100"></th></tr>
+                    </thead>
+                    <tbody id="invoice-rows-body">
+                        <!-- Rows injected here -->
+                    </tbody>
+                </table>
+                <button onclick="addInvoiceRow()" class="print-hidden text-blue-600 font-bold mb-4 text-sm w-fit">+ إضافة سطر</button>
+
+                <div class="flex justify-between mb-8 mt-2 gap-4">
+                    <div class="flex flex-col gap-4 flex-1">
+                        <div class="font-bold flex items-center gap-2 text-[#2d206b]">العملة: <input id="inv-curr" class="w-28 bg-transparent outline-none border-b-2 border-gray-400 no-border-print font-black" onchange="updateInvData('curr', this.value)"/></div>
+                        <div class="text-sm font-bold text-gray-700">
+                            <p class="text-[#2d206b] mb-1">ملاحظات وشروط:</p>
+                            <textarea id="inv-note" class="w-full h-20 outline-none bg-transparent resize-none border border-gray-200 p-2 rounded no-border-print" onchange="updateInvData('note', this.value)"></textarea>
+                        </div>
+                    </div>
+                    <div class="w-72 border-2 border-[#2d206b] rounded p-4 font-bold bg-gray-50 h-fit">
+                        <div class="flex justify-between mb-2"><span>الإجمالي:</span><span id="inv-subT">0</span></div>
+                        <div class="flex justify-between mb-2 text-red-600 border-b border-gray-300 pb-2"><span>الخصم %:</span><input type="number" id="inv-disc" class="w-16 text-center bg-transparent border-b border-red-300 outline-none no-border-print" onchange="updateInvData('disc', this.value)"/></div>
+                        <div class="flex justify-between text-xl text-[#2d206b] mt-2 font-black"><span>الصافي:</span><span id="inv-finalT">0</span></div>
+                    </div>
+                </div>
+
+                <div class="mt-auto flex justify-between items-center border-t-2 border-[#2d206b] pt-4">
+                    <div class="flex gap-4">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://facebook.com/AmiasContracting" class="w-16 h-16 border p-1 rounded" alt="FB">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://tiktok.com/@AmiasContracting" class="w-16 h-16 border p-1 rounded" alt="TK">
+                    </div>
+                    <div class="text-center relative">
+                        <div class="w-24 h-24 border-4 border-[#2d206b] rounded-full flex items-center justify-center text-[#2d206b] font-black transform -rotate-12 opacity-80 text-xs text-center p-2 mx-auto">أمياس<br>للمقاولات<br>س/ت 159162</div>
+                        <p class="font-bold text-[#2d206b] text-xs mt-2">توقيع وختم الإدارة</p>
+                    </div>
+                </div>
+                <div class="bg-[#2d206b] text-white py-2 px-6 mt-4 flex justify-between text-xs font-bold rounded-b-lg" dir="ltr">
+                    <span>📞 0963811138 - 0991090140</span>
+                    <span>🌐 AmiasContracting</span>
+                    <span>✉️ amiasgc@gmail.com</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- رسائل التنبيه -->
+    <div id="alert-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 hidden-view print-hidden">
+        <div class="bg-white rounded-xl p-6 w-80 text-center border-t-4 border-[#2d206b] shadow-2xl">
+            <h3 id="alert-msg" class="font-bold mb-6 text-gray-800"></h3>
+            <button onclick="closeAlert()" class="bg-[#2d206b] text-white px-8 py-2 rounded font-bold">حسناً</button>
         </div>
     </div>
 
-    <script type="text/babel" data-presets="react">
-        const { useState, useEffect } = React;
-
-        const IconPrint = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>;
-        const IconAdd = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-        const IconDel = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
-        const IconLogout = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>;
-        const IconBack = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>;
-        const IconSave = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>;
-        const IconSettings = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
-
-        const CompanyLogo = ({ cls = "w-32 h-auto" }) => (
-            <svg viewBox="0 0 320 220" className={cls} xmlns="http://www.w3.org/2000/svg">
-                <g fill="#4b3b94">
-                    <path d="M 30 155 L 110 139 L 110 147 L 30 163 Z" /><path d="M 30 135 L 110 119 L 110 127 L 30 143 Z" />
-                    <path d="M 30 115 L 110 99 L 110 107 L 30 123 Z" /><path d="M 30 95 L 110 79 L 110 87 L 30 103 Z" />
-                    <path d="M 125 145 L 205 129 L 205 137 L 125 153 Z" fill="#2d206b" /><path d="M 125 125 L 205 109 L 205 117 L 125 133 Z" fill="#2d206b" />
-                    <path d="M 125 105 L 205 89 L 205 97 L 125 113 Z" fill="#2d206b" /><path d="M 125 85 L 205 69 L 205 77 L 125 93 Z" fill="#2d206b" />
-                    <path d="M 125 65 L 205 49 L 205 57 L 125 73 Z" fill="#2d206b" /><path d="M 220 155 L 300 139 L 300 147 L 220 163 Z" />
-                    <path d="M 220 135 L 300 119 L 300 127 L 220 143 Z" /><path d="M 220 115 L 300 99 L 300 107 L 220 123 Z" />
-                    <path d="M 220 95 L 300 79 L 300 87 L 220 103 Z" />
-                </g>
-                <text x="165" y="195" fontFamily="Arial, sans-serif" fontWeight="900" fontStyle="italic" fill="#2d206b" fontSize="22" textAnchor="middle" letterSpacing="1">AMIAS CONTRACTING</text>
-            </svg>
-        );
-
-        const CompanyStamp = ({ cls = "w-32 h-32" }) => (
-            <svg viewBox="0 0 200 200" className={cls} xmlns="http://www.w3.org/2000/svg">
-                <circle cx="100" cy="100" r="95" fill="none" stroke="#2d206b" strokeWidth="2" />
-                <circle cx="100" cy="100" r="87" fill="none" stroke="#2d206b" strokeWidth="4" />
-                <circle cx="100" cy="100" r="62" fill="none" stroke="#2d206b" strokeDasharray="4,3" strokeWidth="1.5" />
-                <path id="st-top" d="M 22,100 A 78,78 0 1,1 178,100" fill="none" />
-                <path id="st-bot" d="M 25,100 A 75,75 0 0,0 175,100" fill="none" />
-                <text><textPath href="#st-top" startOffset="50%" textAnchor="middle" fill="#2d206b" fontSize="15" fontWeight="bold">أمياس للمقاولات</textPath></text>
-                <text><textPath href="#st-bot" startOffset="50%" textAnchor="middle" fill="#2d206b" fontSize="12" fontWeight="bold" letterSpacing="1">AMIAS CONTRACTING</textPath></text>
-                <g fill="#2d206b" transform="translate(68, 75) scale(0.2)">
-                    <path d="M 30 155 L 110 139 L 110 147 L 30 163 Z" /><path d="M 30 135 L 110 119 L 110 127 L 30 143 Z" />
-                    <path d="M 30 115 L 110 99 L 110 107 L 30 123 Z" /><path d="M 125 145 L 205 129 L 205 137 L 125 153 Z" />
-                    <path d="M 125 125 L 205 109 L 205 117 L 125 133 Z" /><path d="M 125 105 L 205 89 L 205 97 L 125 113 Z" />
-                    <path d="M 220 155 L 300 139 L 300 147 L 220 163 Z" /><path d="M 220 135 L 300 119 L 300 127 L 220 143 Z" />
-                    <path d="M 220 115 L 300 99 L 300 107 L 220 123 Z" />
-                </g>
-                <text x="100" y="145" fill="#2d206b" fontSize="10" fontWeight="bold" textAnchor="middle">س/ت : 159162</text>
-            </svg>
-        );
-
-        const AutoQR = ({ link, title }) => {
-            const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + encodeURIComponent(link);
-            return (
-                <div className="flex flex-col items-center">
-                    <img src={qrUrl} alt={title} className="w-16 h-16 object-contain bg-white p-0.5 border border-gray-300 rounded shadow-sm" />
-                    <span className="text-[10px] font-bold text-[#2d206b] mt-1 uppercase">{title}</span>
-                </div>
-            );
+    <!-- الكود البرمجي النقي (بدون React) -->
+    <script>
+        // التهيئة السحابية
+        const firebaseConfig = {
+            apiKey: "AIzaSyAcEQy75s7qUAG07GvLXdmmvBwbyCNASww",
+            authDomain: "amias-invoice.firebaseapp.com",
+            projectId: "amias-invoice",
+            storageBucket: "amias-invoice.firebasestorage.app",
+            messagingSenderId: "521382676875",
+            appId: "1:521382676875:web:735c995856fdd17274c78e"
         };
-
-        if (!firebase.apps.length) {
-            firebase.initializeApp({
-                apiKey: "AIzaSyAcEQy75s7qUAG07GvLXdmmvBwbyCNASww",
-                authDomain: "amias-invoice.firebaseapp.com",
-                projectId: "amias-invoice",
-                storageBucket: "amias-invoice.firebasestorage.app",
-                messagingSenderId: "521382676875",
-                appId: "1:521382676875:web:735c995856fdd17274c78e"
-            });
-        }
-        
-        const auth = firebase.auth();
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth();
 
+        // المتغيرات العامة
         const sysUsers = {
             "Yassin shrif": { pass: "amias2026", isAdmin: true },
             "المبيعات 1": { pass: "sales1", isAdmin: false },
             "المبيعات 2": { pass: "sales2", isAdmin: false }
         };
+        let currentUser = JSON.parse(sessionStorage.getItem('amias_user'));
+        let allInvoices = [];
+        let allItems = [];
+        let activeInvoice = {};
 
-        function App() {
-            const [session, setSession] = useState(() => {
-                const saved = sessionStorage.getItem('amias_user');
-                return saved ? JSON.parse(saved) : null;
-            });
-            const [loginForm, setLoginForm] = useState({ uname: 'Yassin shrif', pwd: '' });
-            const [errorMsg, setErrorMsg] = useState('');
-            const [currentView, setCurrentView] = useState(session ? 'dash' : 'login');
-            const [invoiceData, setInvoiceData] = useState(null);
-            const [searchText, setSearchText] = useState('');
-            const [cloudData, setCloudData] = useState([]);
-            const [itemsList, setItemsList] = useState([]);
-            const [newItemName, setNewItemName] = useState('');
-            const [fbUser, setFbUser] = useState(null);
-            const [alertBox, setAlertBox] = useState({ show: false, title: '', msg: '' });
-
-            useEffect(() => {
-                auth.signInAnonymously().catch(err => console.error(err));
-                const unsub = auth.onAuthStateChanged(usr => setFbUser(usr));
-                return () => unsub();
-            }, []);
-
-            useEffect(() => {
-                if (!fbUser) return;
-                const unsubInvoices = db.collection('amias_invoices').onSnapshot(snap => {
-                    const arr = [];
-                    snap.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
-                    arr.sort((a, b) => b.timestamp - a.timestamp);
-                    setCloudData(arr);
-                });
-                const unsubItems = db.collection('amias_settings').doc('items').onSnapshot(doc => {
-                    if (doc.exists) setItemsList(doc.data().list || []);
-                });
-                return () => { unsubInvoices(); unsubItems(); };
-            }, [fbUser]);
-
-            const showAlert = (title, msg) => setAlertBox({ show: true, title, msg });
-            const formatMoney = (n) => Number(n).toLocaleString('en-US');
-
-            const getNextInvoiceNumber = () => {
-                if (cloudData.length === 0) return "001";
-                const numbers = cloudData.map(inv => parseInt(inv.invNum, 10)).filter(n => !isNaN(n));
-                if (numbers.length === 0) return "001";
-                return String(Math.max(...numbers) + 1).padStart(3, '0');
-            };
-
-            const doLogin = (e) => {
-                e.preventDefault();
-                setErrorMsg('');
-                const cred = sysUsers[loginForm.uname];
-                if (cred && cred.pass === loginForm.pwd) {
-                    const obj = { name: loginForm.uname, isAdmin: cred.isAdmin };
-                    setSession(obj);
-                    sessionStorage.setItem('amias_user', JSON.stringify(obj));
-                    setCurrentView('dash');
-                } else {
-                    setErrorMsg('بيانات الدخول غير صحيحة!');
-                }
-            };
-
-            const doLogout = () => {
-                sessionStorage.removeItem('amias_user');
-                setSession(null);
-                setCurrentView('login');
-            };
-
-            const initNewInvoice = () => {
-                setInvoiceData({
-                    dateStr: new Date().toLocaleDateString('en-GB'),
-                    invNum: getNextInvoiceNumber(),
-                    client: '', project: '', curr: 'جنيه سوداني',
-                    note: '10 سنوات ضمان للألواح وسنة للنظام.\nالمتابعة ما بعد التركيب.',
-                    disc: 0,
-                    rows: [{ id: 1, desc: '', q: 0, p: 0 }, { id: 2, desc: '', q: 0, p: 0 }]
-                });
-                setCurrentView('editor');
-            };
-
-            const saveToCloud = async () => {
-                if (!fbUser) return;
-                if (!invoiceData.client.trim()) return showAlert('تنبيه', 'يرجى كتابة اسم العميل أولاً.');
-                try {
-                    const payload = { ...invoiceData, editor: session.name, timestamp: Date.now() };
-                    if (!payload.creator) payload.creator = session.name;
-                    const { id, ...cleanData } = payload;
-                    if (id) {
-                        await db.collection('amias_invoices').doc(id).set(cleanData);
-                    } else {
-                        await db.collection('amias_invoices').add(cleanData);
-                    }
-                    setCurrentView('dash');
-                } catch (e) {
-                    showAlert('خطأ', 'فشل في الاتصال بالسيرفر.');
-                }
-            };
-            
-            const executeDelete = async (id) => {
-                if (!fbUser) return;
-                if(confirm('هل أنت متأكد من حذف هذه الفاتورة نهائياً؟')) {
-                    try {
-                        await db.collection('amias_invoices').doc(id).delete();
-                    } catch (e) { showAlert('خطأ', 'فشل في الاتصال.'); }
-                }
-            };
-
-            const handleAddItem = async () => {
-                if (!newItemName.trim()) return;
-                const updatedList = [...itemsList, newItemName.trim()];
-                try {
-                    await db.collection('amias_settings').doc('items').set({ list: updatedList });
-                    setNewItemName('');
-                } catch(e) { showAlert('خطأ', 'فشل إضافة الصنف'); }
-            };
-
-            const handleDeleteItem = async (itemName) => {
-                if(confirm(`هل تريد حذف الصنف: ${itemName} ؟`)) {
-                    const updatedList = itemsList.filter(i => i !== itemName);
-                    try { await db.collection('amias_settings').doc('items').set({ list: updatedList }); } 
-                    catch(e) { showAlert('خطأ', 'فشل حذف الصنف'); }
-                }
-            };
-
-            if (currentView === 'login') {
-                return (
-                    <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4 relative overflow-hidden">
-                        <div className="absolute opacity-10 pointer-events-none"><CompanyLogo cls="w-[600px] h-auto" /></div>
-                        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative z-10 border-t-8 border-[#2d206b]">
-                            <div className="flex flex-col items-center mb-6">
-                                <CompanyLogo cls="w-28 h-auto mb-2" />
-                                <h2 className="text-xl font-bold text-[#2d206b] mt-1">النظام السحابي الموحد</h2>
-                            </div>
-                            <form onSubmit={doLogin} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">المستخدم</label>
-                                    <select value={loginForm.uname} onChange={e => setLoginForm({...loginForm, uname: e.target.value})} className="w-full border-2 border-gray-300 rounded p-2.5 outline-none font-bold">
-                                        <option value="Yassin shrif">Yassin shrif (المدير)</option>
-                                        <option value="المبيعات 1">المبيعات 1</option>
-                                        <option value="المبيعات 2">المبيعات 2</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">كلمة المرور</label>
-                                    <input type="password" value={loginForm.pwd} onChange={e => setLoginForm({...loginForm, pwd: e.target.value})} className="w-full border-2 border-gray-300 rounded p-2.5 outline-none text-center font-mono font-bold" required />
-                                </div>
-                                {errorMsg && <div className="bg-red-50 text-red-600 text-sm font-bold p-3 rounded text-center border border-red-200">{errorMsg}</div>}
-                                <button type="submit" className="w-full bg-[#2d206b] text-white font-bold py-3 rounded mt-4 hover:bg-[#1e144a] transition-colors">تسجيل الدخول</button>
-                            </form>
-                        </div>
-                    </div>
-                );
-            }
-
-            if (currentView === 'items_manager') {
-                return (
-                    <div className="min-h-screen bg-slate-100 p-4 md:p-8">
-                        <div className="max-w-3xl mx-auto">
-                            <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow border-r-8 border-[#2d206b] mb-6">
-                                <h1 className="text-xl font-bold text-[#2d206b]">إدارة أسماء الأصناف</h1>
-                                <button onClick={() => setCurrentView('dash')} className="bg-gray-600 text-white font-bold py-2 px-4 rounded flex items-center gap-1 text-sm"><IconBack /> رجوع</button>
-                            </div>
-                            <div className="bg-white p-6 rounded-xl shadow border">
-                                <div className="flex gap-2 mb-6">
-                                    <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="اسم الصنف الجديد..." className="flex-1 border-2 border-gray-300 rounded p-2 outline-none focus:border-[#2d206b] font-bold" onKeyPress={e => e.key === 'Enter' && handleAddItem()} />
-                                    <button onClick={handleAddItem} className="bg-green-600 text-white font-bold py-2 px-6 rounded hover:bg-green-700">إضافة</button>
-                                </div>
-                                <h3 className="font-bold text-gray-700 mb-4 border-b pb-2">الأصناف المحفوظة:</h3>
-                                <ul className="space-y-2">
-                                    {itemsList.map((item, idx) => (
-                                        <li key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded border">
-                                            <span className="font-bold text-[#2d206b]">{item}</span>
-                                            <button onClick={() => handleDeleteItem(item)} className="text-red-500 hover:text-red-700 bg-red-50 px-3 py-1 rounded text-sm font-bold">حذف</button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
-            if (currentView === 'dash') {
-                const listData = cloudData.filter(inv => {
-                    const isMine = session.isAdmin || inv.creator === session.name;
-                    const matchQ = inv.client.toLowerCase().includes(searchText.toLowerCase()) || String(inv.invNum).includes(searchText);
-                    return isMine && matchQ;
-                });
-                
-                const totalMoney = listData.reduce((sum, inv) => {
-                    const sub = (inv.rows || []).reduce((s, r) => s + (r.q * r.p), 0);
-                    return sum + (sub - (sub * (inv.disc || 0) / 100));
-                }, 0);
-
-                return (
-                    <div className="min-h-screen bg-slate-100 p-4 md:p-8">
-                        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow border-r-8 border-[#2d206b] mb-6 gap-4">
-                            <div className="flex items-center gap-4">
-                                <CompanyLogo cls="w-16 h-auto" />
-                                <div>
-                                    <h1 className="text-xl font-bold text-[#2d206b]">فواتير أمياس</h1>
-                                    <p className="text-xs font-bold text-gray-500">حساب: {session.name}</p>
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2 justify-center">
-                                {session.isAdmin && <button onClick={() => setCurrentView('items_manager')} className="bg-[#4b3b94] hover:bg-[#2d206b] text-white font-bold py-2 px-4 rounded flex items-center gap-1 text-sm"><IconSettings /> الأصناف</button>}
-                                <button onClick={initNewInvoice} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-1 text-sm"><IconAdd /> فاتورة جديدة</button>
-                                <button onClick={doLogout} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded flex items-center gap-1 text-sm"><IconLogout /> خروج</button>
-                            </div>
-                        </div>
-
-                        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                            <div className="bg-white p-6 rounded shadow border">
-                                <p className="text-sm font-bold text-gray-500">إجمالي المبيعات الظاهرة</p>
-                                <p className="text-2xl font-black text-[#2d206b] mt-2">{formatMoney(totalMoney)} ج.س</p>
-                            </div>
-                            <div className="bg-white p-6 rounded shadow border">
-                                <p className="text-sm font-bold text-gray-500">عدد الفواتير المصدرة</p>
-                                <p className="text-2xl font-black text-green-600 mt-2">{listData.length}</p>
-                            </div>
-                            <div className="bg-white p-6 rounded shadow border">
-                                <p className="text-sm font-bold text-gray-500">حالة السيرفر</p>
-                                <p className="text-sm font-bold text-blue-600 mt-4 flex items-center gap-2"><span className="w-2 h-2 bg-blue-600 rounded-full animate-ping"></span> متصل</p>
-                            </div>
-                        </div>
-
-                        <div className="max-w-6xl mx-auto bg-white rounded-xl shadow border overflow-hidden">
-                            <div className="p-4 bg-gray-50 border-b flex flex-col md:flex-row justify-between items-center gap-4">
-                                <h3 className="font-bold text-[#2d206b]">السجل السحابي</h3>
-                                <input type="text" placeholder="البحث برقم الفاتورة أو اسم العميل..." value={searchText} onChange={e => setSearchText(e.target.value)} className="border-2 p-2 rounded text-sm w-full md:w-72 outline-none focus:border-[#2d206b]" />
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-center text-sm">
-                                    <thead className="bg-[#eeecf5] text-[#2d206b] font-bold border-b">
-                                        <tr><th className="p-3">رقم</th><th className="p-3">العميل</th><th className="p-3">التاريخ</th><th className="p-3">القيمة</th><th className="p-3">إجراء</th></tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {listData.length === 0 ? <tr><td colSpan="5" className="p-6 font-bold text-gray-400">لا توجد بيانات.</td></tr> : listData.map(inv => {
-                                            const sub = (inv.rows||[]).reduce((s, r) => s + (r.q * r.p), 0);
-                                            const tot = sub - (sub * (inv.disc || 0) / 100);
-                                            return(
-                                            <tr key={inv.id} className="hover:bg-gray-50 border-b">
-                                                <td className="p-3 font-mono font-bold text-lg">{inv.invNum}</td>
-                                                <td className="p-3 font-bold text-[#2d206b]">{inv.client}</td>
-                                                <td className="p-3 text-gray-500">{inv.dateStr}</td>
-                                                <td className="p-3 font-black text-gray-800">{formatMoney(tot)}</td>
-                                                <td className="p-3 flex justify-center gap-2">
-                                                    <button onClick={() => { setInvoiceData(inv); setCurrentView('editor'); }} className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 shadow">عرض</button>
-                                                    {session.isAdmin && <button onClick={() => executeDelete(inv.id)} className="bg-red-500 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-red-600 shadow">حذف</button>}
-                                                </td>
-                                            </tr>
-                                        )})}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
-            if (currentView === 'editor') {
-                const rows = invoiceData.rows || [];
-                const updateField = (f, v) => setInvoiceData({...invoiceData, [f]: v});
-                const updateRow = (id, f, v) => setInvoiceData({...invoiceData, rows: rows.map(r => r.id === id ? {...r, [f]: f==='q'||f==='p' ? Number(v):v} : r)});
-                const addRow = () => setInvoiceData({...invoiceData, rows: [...rows, { id: Date.now(), desc: '', q: 0, p: 0 }]});
-                const delRow = (id) => setInvoiceData({...invoiceData, rows: rows.filter(r => r.id !== id)});
-                
-                const subT = rows.reduce((s, r) => s + (r.q * r.p), 0);
-                const finalT = subT - (subT * (invoiceData.disc || 0) / 100);
-
-                return (
-                    <div className="min-h-screen py-8 print:py-0 bg-gray-100 print:bg-white flex justify-center">
-                        <datalist id="predefined-items">
-                            {itemsList.map((item, idx) => <option key={idx} value={item} />)}
-                        </datalist>
-
-                        <div className="fixed top-4 left-4 z-50 print-hidden flex flex-col gap-3">
-                            <button onClick={() => window.print()} className="bg-[#2d206b] text-white p-4 rounded-full shadow-lg hover:scale-105 transition-transform" title="طباعة"><IconPrint/></button>
-                            <button onClick={saveToCloud} className="bg-green-600 text-white p-4 rounded-full shadow-lg hover:scale-105 transition-transform" title="حفظ ومزامنة"><IconSave/></button>
-                            <button onClick={() => setCurrentView('dash')} className="bg-gray-600 text-white p-4 rounded-full shadow-lg hover:scale-105 transition-transform" title="رجوع"><IconBack/></button>
-                        </div>
-
-                        <div className="w-full max-w-[210mm] bg-white shadow-2xl print:shadow-none relative overflow-hidden flex flex-col mx-auto font-sans p-10">
-                            <div className="flex justify-between items-center border-b-2 border-[#2d206b] pb-4 mb-6">
-                                <CompanyLogo cls="w-32 h-auto" />
-                                <h1 className="text-3xl font-bold text-[#2d206b]">فاتورة</h1>
-                                <div className="text-left font-bold text-gray-700">
-                                    <div>رقم: <input type="text" value={invoiceData.invNum} onChange={e=>updateField('invNum', e.target.value)} className="w-16 outline-none bg-transparent font-mono text-lg"/></div>
-                                    <div>التاريخ: <input type="text" value={invoiceData.dateStr} onChange={e=>updateField('dateStr', e.target.value)} className="w-24 outline-none bg-transparent"/></div>
-                                </div>
-                            </div>
-
-                            <div className="mb-6 flex flex-col gap-2">
-                                <div className="font-bold flex"><span className="w-20">السيد/ة:</span><input type="text" value={invoiceData.client} onChange={e=>updateField('client', e.target.value)} className="border-b border-gray-400 outline-none flex-1 font-bold text-[#2d206b]"/></div>
-                                <div className="font-bold flex"><span className="w-20">المشروع:</span><input type="text" value={invoiceData.project} onChange={e=>updateField('project', e.target.value)} className="border-b border-gray-400 outline-none flex-1 font-bold"/></div>
-                            </div>
-
-                            <table className="w-full text-center border border-gray-400 mb-4">
-                                <thead className="bg-[#eeecf5] text-[#2d206b] border-b border-gray-400 font-bold">
-                                    <tr><th className="p-2 border-l border-gray-400">البيان</th><th className="p-2 border-l border-gray-400 w-20">الكمية</th><th className="p-2 border-l border-gray-400 w-28">السعر</th><th className="p-2 border-l border-gray-400 w-32">الإجمالي</th><th className="print-hidden w-8"></th></tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map((r) => (
-                                        <tr key={r.id} className="border-b border-gray-300">
-                                            <td className="p-2 border-l border-gray-400">
-                                                <input type="text" list="predefined-items" value={r.desc} onChange={e=>updateRow(r.id, 'desc', e.target.value)} placeholder="اختر صنفاً أو اكتب بيدك..." className="w-full outline-none text-right font-bold text-gray-800 bg-transparent"/>
-                                            </td>
-                                            <td className="p-2 border-l border-gray-400"><input type="number" value={r.q||''} onChange={e=>updateRow(r.id, 'q', e.target.value)} className="w-full outline-none text-center bg-transparent"/></td>
-                                            <td className="p-2 border-l border-gray-400"><input type="number" value={r.p||''} onChange={e=>updateRow(r.id, 'p', e.target.value)} className="w-full outline-none text-center bg-transparent"/></td>
-                                            <td className="p-2 font-bold border-l border-gray-400 text-gray-800">{r.q*r.p === 0 ? '-': formatMoney(r.q*r.p)}</td>
-                                            <td className="print-hidden"><button onClick={()=>delRow(r.id)} className="text-red-500 hover:text-red-700 flex justify-center w-full"><IconDel/></button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            <button onClick={addRow} className="print-hidden text-blue-600 font-bold mb-4 text-sm w-fit flex items-center gap-1"><IconAdd/> إضافة سطر</button>
-
-                            <div className="flex justify-between mb-8 mt-4">
-                                <div className="flex flex-col gap-2">
-                                    <div className="font-bold flex items-center gap-2">العملة: <input value={invoiceData.curr} onChange={e=>updateField('curr', e.target.value)} className="w-24 bg-transparent outline-none border-b border-gray-300"/></div>
-                                    <div className="flex gap-4 mt-2">
-                                        <AutoQR link="https://facebook.com/AmiasContracting" title="Facebook" />
-                                        <AutoQR link="https://tiktok.com/@AmiasContracting" title="TikTok" />
-                                    </div>
-                                </div>
-                                <div className="w-64 border border-gray-400 rounded p-4 font-bold bg-gray-50 h-fit">
-                                    <div className="flex justify-between mb-2"><span>الإجمالي:</span><span>{formatMoney(subT)}</span></div>
-                                    <div className="flex justify-between mb-2 text-red-600 border-b border-gray-300 pb-2"><span>الخصم %:</span><input type="number" value={invoiceData.disc||''} onChange={e=>updateField('disc', Number(e.target.value))} className="w-12 text-center bg-transparent border-b border-red-300 outline-none"/></div>
-                                    <div className="flex justify-between text-xl text-[#2d206b] mt-2"><span>الصافي:</span><span>{formatMoney(finalT)}</span></div>
-                                </div>
-                            </div>
-
-                            <div className="mt-auto flex justify-between items-end border-t-2 border-[#2d206b] pt-4">
-                                <div className="text-sm font-bold text-gray-600 w-1/2">
-                                    <p>ملاحظات:</p>
-                                    <textarea value={invoiceData.note} onChange={e=>updateField('note', e.target.value)} className="w-full h-16 outline-none bg-transparent resize-none text-gray-800"></textarea>
-                                </div>
-                                <div className="text-center w-1/2 flex flex-col items-center">
-                                    <CompanyStamp cls="w-24 h-24 opacity-90 transform -rotate-12"/>
-                                    <p className="font-bold text-[#2d206b] text-xs mt-2">توقيع وختم الإدارة</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
-            return (
-                <div>
-                    {alertBox.show && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 print-hidden">
-                            <div className="bg-white rounded p-6 w-80 text-center border-t-4 border-[#2d206b] shadow-2xl">
-                                <h3 className="font-bold mb-4">{alertBox.msg}</h3>
-                                <button onClick={() => setAlertBox({show:false})} className="bg-[#2d206b] text-white px-6 py-2 rounded hover:bg-[#1e144a]">حسناً</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
+        // الدوال الأساسية
+        function switchView(viewId) {
+            document.getElementById('login-view').classList.add('hidden-view');
+            document.getElementById('dash-view').classList.add('hidden-view');
+            document.getElementById('items-view').classList.add('hidden-view');
+            document.getElementById('editor-view').classList.add('hidden-view');
+            document.getElementById(viewId).classList.remove('hidden-view');
         }
 
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        function showAlert(msg) {
+            document.getElementById('alert-msg').innerText = msg;
+            document.getElementById('alert-modal').classList.remove('hidden-view');
+        }
+        function closeAlert() { document.getElementById('alert-modal').classList.add('hidden-view'); }
+        function formatMoney(num) { return Number(num).toLocaleString('en-US'); }
+
+        // نظام تسجيل الدخول
+        function doLogin() {
+            const uname = document.getElementById('login-uname').value;
+            const pwd = document.getElementById('login-pwd').value;
+            const errDiv = document.getElementById('login-error');
+            
+            if (sysUsers[uname] && sysUsers[uname].pass === pwd) {
+                currentUser = { name: uname, isAdmin: sysUsers[uname].isAdmin };
+                sessionStorage.setItem('amias_user', JSON.stringify(currentUser));
+                errDiv.classList.add('hidden-view');
+                initApp();
+            } else {
+                errDiv.innerText = "بيانات الدخول غير صحيحة!";
+                errDiv.classList.remove('hidden-view');
+            }
+        }
+
+        function doLogout() {
+            sessionStorage.removeItem('amias_user');
+            currentUser = null;
+            switchView('login-view');
+        }
+
+        // جلب البيانات من السحابة
+        function fetchCloudData() {
+            db.collection('amias_invoices').onSnapshot(snap => {
+                allInvoices = [];
+                snap.forEach(doc => allInvoices.push({ id: doc.id, ...doc.data() }));
+                allInvoices.sort((a, b) => b.timestamp - a.timestamp);
+                if(document.getElementById('dash-view').classList.contains('hidden-view') === false) renderTable();
+            });
+
+            db.collection('amias_settings').doc('items').onSnapshot(doc => {
+                if(doc.exists) {
+                    allItems = doc.data().list || [];
+                    renderItemsList();
+                    renderDatalist();
+                }
+            });
+        }
+
+        // تشغيل التطبيق
+        function initApp() {
+            if (!currentUser) { switchView('login-view'); return; }
+            
+            auth.signInAnonymously().catch(e => console.log(e));
+            document.getElementById('dash-user-name').innerText = currentUser.name;
+            if(currentUser.isAdmin) document.getElementById('btn-items-manager').classList.remove('hidden-view');
+            else document.getElementById('btn-items-manager').classList.add('hidden-view');
+            
+            fetchCloudData();
+            switchView('dash-view');
+            renderTable();
+        }
+
+        // رسم جدول الفواتير (لوحة التحكم)
+        function renderTable() {
+            const tbody = document.getElementById('invoices-table-body');
+            const search = document.getElementById('search-box').value.toLowerCase();
+            tbody.innerHTML = '';
+            
+            let totalS = 0;
+            let count = 0;
+
+            allInvoices.forEach(inv => {
+                const isMine = currentUser.isAdmin || inv.creator === currentUser.name;
+                const matchQ = (inv.client||'').toLowerCase().includes(search) || (inv.invNum||'').includes(search);
+                
+                if (isMine && matchQ) {
+                    count++;
+                    const subT = (inv.rows||[]).reduce((s, r) => s + (Number(r.q) * Number(r.p)), 0);
+                    const finalT = subT - (subT * (Number(inv.disc) || 0) / 100);
+                    totalS += finalT;
+
+                    let delBtn = currentUser.isAdmin ? `<button onclick="deleteInvoice('${inv.id}')" class="bg-red-500 text-white px-3 py-1 rounded text-xs font-bold">حذف</button>` : '';
+
+                    tbody.innerHTML += `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-3 font-mono font-bold">${inv.invNum}</td>
+                            <td class="p-3 font-bold text-[#2d206b]">${inv.client}</td>
+                            <td class="p-3 text-gray-500">${inv.dateStr}</td>
+                            <td class="p-3 font-black text-gray-800">${formatMoney(finalT)}</td>
+                            <td class="p-3 flex justify-center gap-2">
+                                <button onclick="editInvoice('${inv.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold">عرض</button>
+                                ${delBtn}
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+
+            if(count === 0) tbody.innerHTML = `<tr><td colSpan="5" class="p-6 font-bold text-gray-400">لا توجد فواتير</td></tr>`;
+            
+            document.getElementById('dash-inv-count').innerText = count;
+            document.getElementById('dash-total-sales').innerText = formatMoney(totalS) + ' ج.س';
+        }
+
+        // إدارة الأصناف
+        function renderItemsList() {
+            const list = document.getElementById('items-list-container');
+            list.innerHTML = '';
+            if(allItems.length === 0) list.innerHTML = `<p class="text-gray-500 text-center py-4 font-bold">لا توجد أصناف</p>`;
+            allItems.forEach(item => {
+                list.innerHTML += `
+                    <li class="flex justify-between items-center bg-gray-50 p-3 rounded border">
+                        <span class="font-bold text-[#2d206b]">${item}</span>
+                        <button onclick="deleteItem('${item}')" class="text-red-500 bg-red-50 px-3 py-1 rounded text-sm font-bold">حذف</button>
+                    </li>
+                `;
+            });
+        }
+
+        function renderDatalist() {
+            const dl = document.getElementById('predefined-items');
+            dl.innerHTML = '';
+            allItems.forEach(item => { dl.innerHTML += `<option value="${item}"></option>`; });
+        }
+
+        function addNewItem() {
+            const val = document.getElementById('new-item-input').value.trim();
+            if(!val) return;
+            const updated = [...allItems, val];
+            db.collection('amias_settings').doc('items').set({ list: updated }).then(() => {
+                document.getElementById('new-item-input').value = '';
+            });
+        }
+
+        function deleteItem(val) {
+            if(confirm('حذف هذا الصنف؟')) {
+                const updated = allItems.filter(i => i !== val);
+                db.collection('amias_settings').doc('items').set({ list: updated });
+            }
+        }
+
+        // محرر الفاتورة
+        function getNextInvoiceNumber() {
+            if (allInvoices.length === 0) return "001";
+            const numbers = allInvoices.map(inv => parseInt(inv.invNum, 10)).filter(n => !isNaN(n));
+            if (numbers.length === 0) return "001";
+            return String(Math.max(...numbers) + 1).padStart(3, '0');
+        }
+
+        function openNewInvoice() {
+            activeInvoice = {
+                id: null,
+                dateStr: new Date().toLocaleDateString('en-GB'),
+                invNum: getNextInvoiceNumber(),
+                client: '', project: '', curr: 'جنيه سوداني',
+                note: '10 سنوات ضمان للألواح وسنة للنظام.\nالمتابعة ما بعد التركيب.',
+                disc: 0,
+                rows: [
+                    { id: Date.now(), desc: '', q: 0, p: 0 },
+                    { id: Date.now()+1, desc: '', q: 0, p: 0 }
+                ]
+            };
+            populateEditor();
+            switchView('editor-view');
+        }
+
+        function editInvoice(id) {
+            const found = allInvoices.find(i => i.id === id);
+            if(found) {
+                activeInvoice = JSON.parse(JSON.stringify(found));
+                populateEditor();
+                switchView('editor-view');
+            }
+        }
+
+        function updateInvData(field, val) {
+            activeInvoice[field] = val;
+            if(field === 'disc') renderInvoiceRows(); // recalculate totals
+        }
+
+        function updateRowData(id, field, val) {
+            const row = activeInvoice.rows.find(r => r.id === id);
+            if(row) {
+                row[field] = (field === 'q' || field === 'p') ? Number(val) : val;
+                renderInvoiceRows();
+            }
+        }
+
+        function addInvoiceRow() {
+            activeInvoice.rows.push({ id: Date.now(), desc: '', q: 0, p: 0 });
+            renderInvoiceRows();
+        }
+
+        function deleteInvoiceRow(id) {
+            activeInvoice.rows = activeInvoice.rows.filter(r => r.id !== id);
+            renderInvoiceRows();
+        }
+
+        function renderInvoiceRows() {
+            const tbody = document.getElementById('invoice-rows-body');
+            tbody.innerHTML = '';
+            let subT = 0;
+            
+            activeInvoice.rows.forEach((r, idx) => {
+                const rowTotal = Number(r.q) * Number(r.p);
+                subT += rowTotal;
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-300">
+                        <td class="p-2 border border-gray-400 font-bold bg-gray-100">${idx + 1}</td>
+                        <td class="p-2 border border-gray-400"><input type="text" list="predefined-items" value="${r.desc}" onchange="updateRowData(${r.id}, 'desc', this.value)" placeholder="الصنف..." class="w-full outline-none font-bold text-gray-800 bg-transparent text-right"/></td>
+                        <td class="p-2 border border-gray-400"><input type="number" value="${r.q||''}" onchange="updateRowData(${r.id}, 'q', this.value)" class="w-full outline-none text-center bg-transparent"/></td>
+                        <td class="p-2 border border-gray-400"><input type="number" value="${r.p||''}" onchange="updateRowData(${r.id}, 'p', this.value)" class="w-full outline-none text-center bg-transparent"/></td>
+                        <td class="p-2 border border-gray-400 font-bold">${rowTotal === 0 ? '-' : formatMoney(rowTotal)}</td>
+                        <td class="print-hidden border border-gray-400"><button onclick="deleteInvoiceRow(${r.id})" class="text-red-500 font-bold px-2">X</button></td>
+                    </tr>
+                `;
+            });
+
+            const discAmt = subT * (Number(activeInvoice.disc) || 0) / 100;
+            const finalT = subT - discAmt;
+
+            document.getElementById('inv-subT').innerText = formatMoney(subT);
+            document.getElementById('inv-finalT').innerText = formatMoney(finalT);
+        }
+
+        function populateEditor() {
+            document.getElementById('inv-num').value = activeInvoice.invNum;
+            document.getElementById('inv-date').value = activeInvoice.dateStr;
+            document.getElementById('inv-client').value = activeInvoice.client;
+            document.getElementById('inv-project').value = activeInvoice.project;
+            document.getElementById('inv-curr').value = activeInvoice.curr;
+            document.getElementById('inv-note').value = activeInvoice.note;
+            document.getElementById('inv-disc').value = activeInvoice.disc || '';
+            renderInvoiceRows();
+        }
+
+        function saveInvoice() {
+            if(!activeInvoice.client.trim()) return showAlert("يرجى كتابة اسم العميل أولاً");
+            
+            const payload = { ...activeInvoice, timestamp: Date.now(), editor: currentUser.name };
+            if(!payload.creator) payload.creator = currentUser.name;
+            const { id, ...dataToSave } = payload;
+
+            if (id) {
+                db.collection('amias_invoices').doc(id).set(dataToSave).then(() => {
+                    showAlert("تم تحديث الفاتورة بنجاح");
+                    switchView('dash-view');
+                });
+            } else {
+                db.collection('amias_invoices').add(dataToSave).then(() => {
+                    showAlert("تم حفظ الفاتورة السحابية بنجاح");
+                    switchView('dash-view');
+                });
+            }
+        }
+
+        function deleteInvoice(id) {
+            if(confirm('متأكد من حذف الفاتورة؟')) {
+                db.collection('amias_invoices').doc(id).delete();
+            }
+        }
+
+        // تشغيل مباشر
+        window.onload = initApp;
 
     </script>
 </body>
